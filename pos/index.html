@@ -1,0 +1,474 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mutambo POS</title>
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#de1b23">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Instrument+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="../assets/mb.css">
+<style>
+/* POS: tablet-first, big tap targets. Sell, top up, online orders, today's cash, products, settings. */
+html, body { background: var(--wash); }
+.pbar { position: sticky; top: 0; z-index: 30; background: var(--bg); box-shadow: 0 1px 0 var(--line); }
+.pbar .in { display: flex; align-items: center; gap: 18px; padding: 0 16px; height: 64px; }
+.pbar .tabs { border: 0; margin: 0; flex: 1; }
+.pbar .who { font-size: 13px; color: var(--muted); white-space: nowrap; }
+.badge { display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: var(--red); color: var(--on-red); font-size: 12px; margin-left: 4px; }
+.pmain { padding: 16px; max-width: 1400px; margin: 0 auto; }
+.sell { display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: 16px; align-items: start; }
+@media (max-width: 980px) { .sell { grid-template-columns: 1fr; } }
+.chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.chips button { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 8px 14px; font: 600 14px var(--display); cursor: pointer; }
+.chips button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.tile { background: var(--surface); border: 1.5px solid var(--line); border-radius: 14px; padding: 14px; text-align: left; cursor: pointer; min-height: 92px; display: flex; flex-direction: column; justify-content: space-between; gap: 6px; }
+.tile:hover { border-color: var(--red); }
+.tile:active { transform: scale(.98); }
+.tile b { font: 700 16px var(--display); }
+.tile span { font-size: 13px; color: var(--muted); }
+.tile[disabled] { opacity: .45; cursor: not-allowed; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.panel h2 { font-size: 18px; font-weight: 800; }
+.sticky { position: sticky; top: 80px; }
+@media (max-width: 980px) { .sticky { position: static; } }
+.mres { display: flex; flex-direction: column; gap: 6px; }
+.mres button { text-align: left; border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 10px 12px; cursor: pointer; }
+.mres button:hover { border-color: var(--red); }
+.mem { display: flex; justify-content: space-between; align-items: center; gap: 10px; background: var(--wash); border-radius: 12px; padding: 12px; }
+.mem b { font: 700 16px var(--display); }
+.mem .s { font-size: 13px; color: var(--muted); }
+.cline { display: grid; grid-template-columns: minmax(0, 1fr) 96px auto 28px; gap: 8px; align-items: center; padding-block: 8px; border-bottom: 1px solid var(--line); }
+.cline .t { font: 700 15px var(--display); }
+.cline .s { font-size: 12px; color: var(--muted); }
+.cline input { width: 100%; text-align: right; font: 600 15px var(--body); padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); }
+.cline .x { border: 0; background: transparent; font-size: 20px; cursor: pointer; color: var(--muted); }
+.pay { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.pay button { border: 1.5px solid var(--line); background: var(--surface); border-radius: 12px; padding: 12px; font: 700 15px var(--display); cursor: pointer; text-align: left; }
+.pay button span { display: block; font: 500 12px var(--body); color: var(--muted); }
+.pay button[aria-pressed="true"] { border-color: var(--red); box-shadow: inset 0 0 0 1px var(--red); }
+.pay button[disabled] { opacity: .4; cursor: not-allowed; }
+.big { font: 800 28px var(--display); font-variant-numeric: tabular-nums; }
+.done { background: #1f7a3d; color: #fff; border-radius: 14px; padding: 16px; }
+.done b { font: 800 20px var(--display); display: block; }
+.quick { display: flex; gap: 8px; flex-wrap: wrap; }
+.quick button { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 8px 14px; font: 700 14px var(--display); cursor: pointer; }
+.two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 860px) { .two { grid-template-columns: 1fr; } }
+.ocards { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
+.ocard { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 8px; }
+.ocard .hd { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.ocard .hd b { font: 800 18px var(--display); }
+.ocard ul { margin: 0; padding-left: 18px; font-size: 14px; }
+.ocard .acts { display: flex; gap: 8px; flex-wrap: wrap; }
+.ocard .s { font-size: 13px; color: var(--muted); }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.kpi { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
+.kpi .l { font-size: 13px; color: var(--muted); }
+.kpi .v { font: 800 30px var(--display); font-variant-numeric: tabular-nums; margin-top: 4px; }
+.meter { height: 14px; background: var(--line); border-radius: 999px; overflow: hidden; position: relative; margin-top: 12px; }
+.meter i { position: absolute; inset: 0 auto 0 0; background: var(--red); border-radius: 999px; }
+.meter u { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--ink); }
+table.pt { width: 100%; border-collapse: collapse; background: var(--surface); border-radius: 14px; overflow: hidden; }
+.pt th, .pt td { padding: 10px 12px; border-bottom: 1px solid var(--line); text-align: left; font-size: 14px; }
+.pt th { font: 700 12px var(--display); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.pt input[type=number] { width: 110px; padding: 8px; border: 1px solid var(--line); border-radius: 8px; font: 15px var(--body); background: var(--surface); color: var(--ink); }
+.tblwrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 14px; }
+.joinqr { display: flex; gap: 14px; align-items: center; }
+.joinqr .q { background: #fff; padding: 6px; border-radius: 10px; width: 92px; height: 92px; flex: none; }
+.joinqr .q img, .joinqr .q canvas { width: 80px !important; height: 80px !important; }
+</style>
+</head>
+<body>
+<header class="pbar"><div class="in">
+  <span class="mark" style="font-size:20px">MUTAMBO<svg aria-hidden="true" viewBox="0 0 60 8"><path d="M1 5 Q 20 9 40 4 T 59 3" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg></span>
+  <nav class="tabs" id="tabs" aria-label="POS"></nav>
+  <span class="who" id="who"></span>
+</div></header>
+<main class="pmain" id="app"><p class="spin">Loading…</p></main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="../assets/mb.js"></script>
+<script>
+(() => {
+const { sb, esc, money, when, errText, bonusFor, toast, label } = MB;
+const $ = s => document.querySelector(s);
+const TARGET = { low: 15000, high: 20000 }; // daily cash-in goal, kwacha
+const CATS = [["all", "All"], ["packs", "Packs"], ["steaks", "Steaks"], ["everyday", "Everyday"], ["slow", "Slow cook"], ["braai", "Braai"], ["offal", "Offal"]];
+const NEXT = { pending: "packed", paid: "packed", packed: null, out_for_delivery: "delivered" };
+
+let session = null, me = null, products = [], settings = null;
+let tab = "sell", openCount = 0;
+const sale = { cat: "all", lines: [], member: null, pay: "cash", ref: "", tendered: "", result: null, results: [] };
+const top = { member: null, amount: "", method: "cash", ref: "", result: null, results: [] };
+let reportDay = new Date(Date.now() + 2 * 3600e3).toISOString().slice(0, 10); // Lusaka is UTC+2
+
+const byId = id => products.find(p => p.id === id);
+const isAdmin = () => me && me.role === "admin";
+
+/* ---------- data ---------- */
+async function loadAll() {
+  const [p, s] = await Promise.all([
+    sb.from("products").select("*").order("sort"),
+    sb.from("settings").select("*").eq("id", 1).single(),
+  ]);
+  if (p.error) throw p.error; if (s.error) throw s.error;
+  products = p.data; settings = s.data;
+}
+async function countOpen() {
+  const { count } = await sb.from("orders").select("id", { count: "exact", head: true }).eq("channel", "online").in("status", ["pending", "paid", "packed", "out_for_delivery"]);
+  openCount = count || 0; tabs();
+}
+
+/* ---------- chrome ---------- */
+function tabs() {
+  if (!me || me.role === "customer") { $("#tabs").innerHTML = ""; $("#who").innerHTML = ""; return; }
+  const t = [["sell", "Sell"], ["topup", "Top up"], ["orders", "Orders" + (openCount ? `<span class="badge">${openCount}</span>` : "")], ["today", "Today"]];
+  if (isAdmin()) t.push(["products", "Products"], ["settings", "Settings"]);
+  $("#tabs").innerHTML = t.map(([k, v]) => `<button type="button" data-tab="${k}" aria-current="${tab === k}">${v}</button>`).join("");
+  $("#who").innerHTML = `${esc(me.full_name || session.user.email)} · <button type="button" class="pill pill-line" id="signout" style="padding:5px 12px;font-size:13px">Sign out</button>`;
+}
+
+function memberBox(state, scope) {
+  if (state.member) {
+    const m = state.member;
+    return `<div class="mem"><div><b>${esc(m.full_name || "Member")}</b><div class="s">${esc(m.member_code)} · ${esc(m.phone || "")}</div><div class="s">Wallet ${money(m.balance)}</div></div><button type="button" class="pill pill-line" data-clear="${scope}">Change</button></div>`;
+  }
+  return `<div class="fld">Member (code, phone or name)<input class="inp" data-find="${scope}" placeholder="e.g. 482915" autocomplete="off" inputmode="search"></div>
+    <div class="mres" id="mres-${scope}">${state.results.map((m, i) => `<button type="button" data-pick="${scope}" data-i="${i}"><b>${esc(m.full_name || "Member")}</b> · ${esc(m.member_code)}<div class="fine">${esc(m.phone || "")} · ${money(m.balance)}</div></button>`).join("")}</div>`;
+}
+
+/* ---------- sell ---------- */
+function saleTotals() {
+  const sub = sale.lines.reduce((s, l) => s + (byId(l.id)?.price || 0) * (Number(l.qty) || 0), 0);
+  const discount = sale.pay === "wallet" ? Math.round(sub * Number(settings.wallet_discount_pct || 0)) / 100 : 0;
+  return { sub: Math.round(sub * 100) / 100, discount, total: Math.round((sub - discount) * 100) / 100 };
+}
+function viewSell() {
+  const list = products.filter(p => p.active && (sale.cat === "all" || p.category === sale.cat));
+  return `<div class="sell">
+    <div>
+      <div class="chips">${CATS.map(([k, v]) => `<button type="button" data-cat="${k}" aria-pressed="${sale.cat === k}">${v}</button>`).join("")}</div>
+      <div class="tiles">${list.map(p => `<button type="button" class="tile" data-add="${esc(p.id)}"${p.price == null ? " disabled" : ""}><b>${esc(p.name)}</b><span>${p.price == null ? "No price set" : money(p.price) + (p.unit === "kg" ? " / kg" : " / pack")}</span></button>`).join("")}</div>
+    </div>
+    <div class="panel sticky" id="salePanel">${salePanel()}</div>
+  </div>`;
+}
+function salePanel() {
+  if (sale.result) {
+    const r = sale.result;
+    return `<div class="done"><b>Sale #${r.order_id} complete</b>Total ${money(r.total)}${r.discount > 0 ? ` · saved ${money(r.discount)}` : ""}${r.change != null ? `<br>Change due: <b style="display:inline;font-size:20px">${money(r.change)}</b>` : ""}${r.balance != null ? `<br>Wallet balance now ${money(r.balance)}` : ""}</div>
+      <button type="button" class="pill pill-red pill-lg" id="newSale">New sale</button>`;
+  }
+  const t = saleTotals(), m = sale.member, short = sale.pay === "wallet" && (!m || m.balance < t.total);
+  const change = sale.pay === "cash" && sale.tendered !== "" ? Number(sale.tendered) - t.total : null;
+  return `<h2>Sale</h2>
+    ${memberBox(sale, "sale")}
+    <div>${sale.lines.length ? sale.lines.map((l, i) => { const p = byId(l.id); return `<div class="cline"><div><div class="t">${esc(p.name)}</div><div class="s">${money(p.price)} / ${p.unit === "kg" ? "kg" : "pack"}</div></div>
+        <input type="number" inputmode="decimal" step="${p.unit === "kg" ? "0.005" : "1"}" min="0" value="${l.qty}" data-qty="${i}" aria-label="${p.unit === "kg" ? "Weight in kg" : "Packs"} for ${esc(p.name)}">
+        <span class="amt">${money((p.price || 0) * (Number(l.qty) || 0))}</span><button type="button" class="x" data-del="${i}" aria-label="Remove ${esc(p.name)}">×</button></div>`; }).join("") : `<p class="fine">Tap a product to add it. Type the scale weight for cuts.</p>`}</div>
+    <div class="rows">
+      <div class="row"><span>Subtotal</span><span class="amt">${money(t.sub)}</span></div>
+      ${t.discount ? `<div class="row"><span>Wallet discount</span><span class="amt pos">−${money(t.discount)}</span></div>` : ""}
+      <div class="row"><b>Total</b><span class="big">${money(t.total)}</span></div>
+    </div>
+    <div class="pay">
+      <button type="button" data-pay="wallet" aria-pressed="${sale.pay === "wallet"}"${m ? "" : " disabled"}>Wallet<span>${m ? `${money(m.balance)} · ${settings.wallet_discount_pct}% off` : "Find member first"}</span></button>
+      <button type="button" data-pay="cash" aria-pressed="${sale.pay === "cash"}">Cash<span>Count change</span></button>
+      <button type="button" data-pay="mobile_money" aria-pressed="${sale.pay === "mobile_money"}">Mobile money<span>Airtel or MTN</span></button>
+      <button type="button" data-pay="card" aria-pressed="${sale.pay === "card"}">Card<span>Terminal</span></button>
+    </div>
+    ${sale.pay === "cash" ? `<div class="fld">Cash received<input class="inp" type="number" inputmode="decimal" id="tendered" value="${esc(sale.tendered)}" placeholder="${t.total || ""}"></div>${change != null ? `<p class="${change < 0 ? "err" : "ok"}">${change < 0 ? `Short by ${money(-change)}` : `Change ${money(change)}`}</p>` : ""}` : ""}
+    ${sale.pay === "mobile_money" || sale.pay === "card" ? `<div class="fld">Reference${sale.pay === "mobile_money" ? " (transaction ID)" : " (optional)"}<input class="inp" id="saleRef" value="${esc(sale.ref)}"></div>` : ""}
+    ${short && m ? `<p class="err">Wallet balance is ${money(m.balance)}. Top up first or take another payment.</p>` : ""}
+    <p class="err" id="saleErr" role="alert"></p>
+    <button type="button" class="pill pill-red pill-lg" id="complete"${!sale.lines.length || short || (change != null && change < 0) ? " disabled" : ""}>Complete sale · ${money(t.total)}</button>`;
+}
+async function completeSale(btn) {
+  const err = $("#saleErr");
+  if (sale.pay === "mobile_money" && !sale.ref.trim()) { err.textContent = "Add the mobile money transaction ID."; return; }
+  const items = sale.lines.filter(l => Number(l.qty) > 0).map(l => ({ id: l.id, qty: Number(l.qty) }));
+  if (!items.length) { err.textContent = "Add at least one item."; return; }
+  btn.disabled = true; btn.textContent = "Saving…";
+  const { data, error } = await sb.rpc("pos_sale", { customer: sale.member?.id || null, items, payment: sale.pay, reference: sale.ref.trim() || null });
+  if (error) { err.textContent = errText(error); btn.disabled = false; btn.textContent = "Complete sale"; return; }
+  sale.result = { ...data, change: sale.pay === "cash" && sale.tendered !== "" ? Number(sale.tendered) - Number(data.total) : null };
+  if (sale.member && data.balance != null) sale.member.balance = data.balance;
+  $("#salePanel").innerHTML = salePanel();
+}
+
+/* ---------- top up ---------- */
+function viewTopup() {
+  const amt = Number(top.amount) || 0, bonus = bonusFor(settings, amt);
+  const joinUrl = location.origin + location.pathname.replace(/pos\/?(index\.html)?$/, "") + "#join";
+  return `<div class="two">
+    <div class="panel">
+      <h2>Top up a wallet</h2>
+      ${top.result ? `<div class="done"><b>${money(top.result.amount)} added${top.result.bonus > 0 ? ` + ${money(top.result.bonus)} bonus` : ""}</b>${esc(top.result.name)} now has ${money(top.result.balance)}</div><button type="button" class="pill pill-red pill-lg" id="newTop">Another top-up</button>` : `
+      ${memberBox(top, "top")}
+      <div class="fld">Amount (K)<input class="inp" type="number" inputmode="decimal" id="topAmt" value="${esc(top.amount)}" min="1"></div>
+      <div class="quick">${[200, 500, 1000, 2500, 5000].map(v => `<button type="button" data-amt="${v}">${money(v)}</button>`).join("")}</div>
+      <div class="pay">${["cash", "mobile_money", "card"].map(k => `<button type="button" data-tm="${k}" aria-pressed="${top.method === k}">${label(k)}</button>`).join("")}</div>
+      ${top.method !== "cash" ? `<div class="fld">Reference${top.method === "mobile_money" ? " (transaction ID, required)" : " (optional)"}<input class="inp" id="topRef" value="${esc(top.ref)}"></div>` : ""}
+      <div class="rows"><div class="row"><span>Bonus</span><span class="amt pos">${bonus ? "+" + money(bonus) : "—"}</span></div><div class="row"><b>Wallet gets</b><span class="big">${money(amt + bonus)}</span></div></div>
+      <p class="err" id="topErr" role="alert"></p>
+      <button type="button" class="pill pill-red pill-lg" id="doTop"${!top.member || amt <= 0 ? " disabled" : ""}>Confirm top-up${amt ? " · " + money(amt) : ""}</button>
+      <p class="fine">Only confirm once the money is in the till or the MoMo payment has arrived.</p>`}
+    </div>
+    <div class="panel">
+      <h2>Bonus tiers</h2>
+      <div class="rows">${(settings.topup_bonus || []).map(t => `<div class="row"><span>${money(t.min)} or more</span><b>+${t.pct}%</b></div>`).join("")}</div>
+      <h2 style="margin-top:8px">New customer?</h2>
+      <div class="joinqr"><div class="q" id="joinQr"></div><p>Ask them to scan this and join on their phone. Their member code shows in their account, then you can top them up.</p></div>
+      <p class="fine">${esc(joinUrl)}</p>
+    </div>
+  </div>`;
+}
+async function doTopup(btn) {
+  const err = $("#topErr"), amt = Number(top.amount);
+  if (top.method === "mobile_money" && !top.ref.trim()) { err.textContent = "Add the mobile money transaction ID."; return; }
+  btn.disabled = true; btn.textContent = "Saving…";
+  const { data, error } = await sb.rpc("topup_wallet", { customer: top.member.id, amount: amt, method: top.method, reference: top.ref.trim() || null });
+  if (error) { err.textContent = errText(error); btn.disabled = false; btn.textContent = "Confirm top-up"; return; }
+  top.result = { amount: amt, bonus: Number(data.bonus), balance: Number(data.balance), name: top.member.full_name || top.member.member_code };
+  render();
+}
+
+/* ---------- orders ---------- */
+async function viewOrders() {
+  const { data, error } = await sb.from("orders").select("*, order_items(*)").eq("channel", "online").in("status", ["pending", "paid", "packed", "out_for_delivery"]).order("created_at");
+  if (error) return `<p class="err">${esc(errText(error))}</p>`;
+  const ids = [...new Set(data.map(o => o.user_id).filter(Boolean))];
+  const people = {};
+  if (ids.length) { const r = await sb.from("profiles").select("id, full_name, phone, member_code").in("id", ids); (r.data || []).forEach(p => { people[p.id] = p; }); }
+  openCount = data.length; tabs();
+  if (!data.length) return `<div class="panel"><h2>No open online orders</h2><p class="fine">New orders show here as soon as they're placed.</p></div>`;
+  return `<div class="ocards">${data.map(o => { const p = people[o.user_id] || {}; const nxt = o.status === "packed" ? (o.fulfilment === "delivery" ? "out_for_delivery" : "collected") : NEXT[o.status]; return `<div class="ocard">
+      <div class="hd"><b>#${o.id}</b><span class="tag red">${esc(label(o.status))}</span></div>
+      <div><b>${esc(p.full_name || "Customer")}</b> · ${esc(p.phone || "")} · ${esc(p.member_code || "")}</div>
+      <div class="s">${esc(label(o.fulfilment))}${o.delivery_day ? " · " + esc(o.delivery_day) : ""}${o.area ? " · " + esc(o.area) : ""} · placed ${when(o.created_at)}</div>
+      <ul>${o.order_items.map(i => `<li>${esc(i.name)} — ${i.unit === "kg" ? i.qty + " kg" : i.qty + " pack" + (i.qty > 1 ? "s" : "")}</li>`).join("")}</ul>
+      ${o.note ? `<div class="s">Note: ${esc(o.note)}</div>` : ""}
+      <div><b>${money(o.total)}</b> · ${esc(label(o.payment_method))} · ${o.paid ? `<span class="tag red">Paid</span>` : `<span class="tag">Not paid</span>`}</div>
+      <div class="acts">
+        ${nxt ? `<button type="button" class="pill pill-red" data-st="${o.id}" data-to="${nxt}">${esc(label(nxt))}</button>` : ""}
+        ${!o.paid ? `<select class="inp" style="width:auto" id="pm-${o.id}"><option value="cash">Cash</option><option value="mobile_money">Mobile money</option><option value="card">Card</option></select><button type="button" class="pill pill-line" data-paid="${o.id}" data-cur="${o.status}">Mark paid</button>` : ""}
+        <button type="button" class="pill pill-line" data-cancel="${o.id}">Cancel</button>
+      </div>
+    </div>`; }).join("")}</div>`;
+}
+
+/* ---------- today ---------- */
+async function viewToday() {
+  const { data: r, error } = await sb.rpc("day_report", { day: reportDay });
+  if (error) return `<p class="err">${esc(errText(error))}</p>`;
+  const cash = Number(r.cash_in || 0), pctLow = Math.min(100, cash / TARGET.high * 100);
+  const by = r.by_method || {}, tu = r.topups || {};
+  return `<div class="panel" style="margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><h2>Cash in</h2><input class="inp" type="date" id="repDay" value="${reportDay}" style="width:auto"></div>
+      <div class="big" style="font-size:44px">${money(cash)}</div>
+      <div class="meter" aria-label="Progress to daily target"><i style="width:${pctLow}%"></i><u style="left:${TARGET.low / TARGET.high * 100}%"></u></div>
+      <p class="fine">Target ${money(TARGET.low)}–${money(TARGET.high)} a day. ${cash >= TARGET.low ? "Target reached." : `${money(TARGET.low - cash)} to go.`} Cash in = cash, MoMo and card sales plus wallet top-ups. Wallet sales were paid for when the wallet was topped up.</p>
+    </div>
+    <div class="kpis">
+      <div class="kpi"><div class="l">Sales (all payments)</div><div class="v">${money(r.sales_total)}</div></div>
+      <div class="kpi"><div class="l">Orders</div><div class="v">${r.orders}</div></div>
+      <div class="kpi"><div class="l">Wallet top-ups</div><div class="v">${money(Object.values(tu).reduce((a, b) => a + Number(b), 0))}</div></div>
+      <div class="kpi"><div class="l">Open online orders</div><div class="v">${r.open_online}</div></div>
+    </div>
+    <div class="two" style="margin-top:16px">
+      <div class="panel"><h2>Sales by payment</h2><div class="rows">${Object.keys(by).length ? Object.entries(by).map(([k, v]) => `<div class="row"><span>${esc(label(k))}</span><span class="amt">${money(v)}</span></div>`).join("") : `<p class="fine">No sales yet.</p>`}</div></div>
+      <div class="panel"><h2>Top-ups by method</h2><div class="rows">${Object.keys(tu).length ? Object.entries(tu).map(([k, v]) => `<div class="row"><span>${esc(label(k))}</span><span class="amt">${money(v)}</span></div>`).join("") : `<p class="fine">No top-ups yet.</p>`}</div></div>
+    </div>`;
+}
+
+/* ---------- products (admin) ---------- */
+function viewProducts() {
+  return `<div class="panel" style="margin-bottom:12px"><h2>Products and prices</h2><p class="fine">Prices in kwacha, per kg for cuts and per pack for packs. Items without a price can't be sold. Untick Active to hide an item.</p></div>
+  <div class="tblwrap"><table class="pt"><thead><tr><th>Product</th><th>Category</th><th>Unit</th><th>Price (K)</th><th>Active</th><th></th></tr></thead><tbody>
+  ${products.map(p => `<tr><td><b>${esc(p.name)}</b></td><td>${esc(p.category)}</td><td>${esc(p.unit)}</td>
+    <td><input type="number" inputmode="decimal" step="0.01" min="0" value="${p.price ?? ""}" id="pr-${esc(p.id)}"></td>
+    <td><input type="checkbox" id="ac-${esc(p.id)}"${p.active ? " checked" : ""}></td>
+    <td><button type="button" class="pill pill-red" data-savep="${esc(p.id)}">Save</button></td></tr>`).join("")}
+  </tbody></table></div>`;
+}
+
+/* ---------- settings (admin) ---------- */
+function viewSettings() {
+  const s = settings, tiers = (s.topup_bonus || []).concat([{ min: "", pct: "" }]).slice(0, 4);
+  return `<div class="two"><form class="panel form" id="setForm">
+    <h2>Rewards and delivery</h2>
+    <label>Wallet discount (%)<input name="wallet_discount_pct" type="number" step="0.5" min="0" max="50" value="${s.wallet_discount_pct}"></label>
+    <label>Delivery fee (K)<input name="delivery_fee" type="number" step="1" min="0" value="${s.delivery_fee}"></label>
+    <label>Minimum online order (K)<input name="min_order" type="number" step="1" min="0" value="${s.min_order}"></label>
+    <label>Delivery areas (comma separated)<input name="areas" value="${esc((s.areas || []).join(", "))}"></label>
+    <label>Mobile money instructions<textarea name="momo_instructions">${esc(s.momo_instructions || "")}</textarea></label>
+    <div class="fld">Top-up bonus tiers (top up at least K…, get %)${tiers.map((t, i) => `<div style="display:flex;gap:8px"><input class="inp" name="tmin${i}" type="number" placeholder="K min" value="${t.min}"><input class="inp" name="tpct${i}" type="number" step="0.5" placeholder="%" value="${t.pct}"></div>`).join("")}</div>
+    <p class="err" role="alert"></p>
+    <button type="submit" class="pill pill-red pill-lg">Save settings</button>
+  </form>
+  <div class="panel"><h2>Staff</h2><p>Staff and admins are set by role. To make someone staff, they join on the website first, then you run this in the Supabase SQL editor with their member code:</p>
+  <pre style="white-space:pre-wrap;background:var(--wash);padding:12px;border-radius:10px;font-size:13px">update profiles set role = 'staff' where member_code = '123456';</pre></div></div>`;
+}
+
+/* ---------- sign in ---------- */
+function viewSignin(msg) {
+  return `<div class="auth" style="padding-top:40px"><h1>Staff sign in</h1><p class="lead">${msg || "Mutambo Beef point of sale."}</p>
+    <form class="form" id="signinForm"><label>Email<input name="email" type="email" autocomplete="username" required></label><label>Password<input name="password" type="password" autocomplete="current-password" required></label><p class="err" role="alert"></p><button class="pill pill-red pill-lg" type="submit">Sign in</button></form></div>`;
+}
+
+/* ---------- render ---------- */
+async function render() {
+  tabs();
+  const app = $("#app");
+  if (!session) { app.innerHTML = viewSignin(); return; }
+  if (!me) { app.innerHTML = `<p class="spin">Loading…</p>`; return; }
+  if (me.role === "customer") { app.innerHTML = viewSignin(`${esc(session.user.email)} isn't a staff account. Ask the owner to give you staff access.`) + `<p style="text-align:center;margin-top:12px"><button type="button" class="pill pill-line" id="signout">Sign out</button></p>`; return; }
+  if (tab === "sell") app.innerHTML = viewSell();
+  else if (tab === "topup") { app.innerHTML = viewTopup(); const q = $("#joinQr"); if (q && window.QRCode) try { new QRCode(q, { text: location.origin + location.pathname.replace(/pos\/?(index\.html)?$/, "") + "#join", width: 80, height: 80 }); } catch (e) {} }
+  else if (tab === "orders") { app.innerHTML = `<p class="spin">Loading orders…</p>`; app.innerHTML = await viewOrders(); }
+  else if (tab === "today") { app.innerHTML = `<p class="spin">Loading…</p>`; app.innerHTML = await viewToday(); }
+  else if (tab === "products" && isAdmin()) app.innerHTML = viewProducts();
+  else if (tab === "settings" && isAdmin()) app.innerHTML = viewSettings();
+}
+function rerenderPanel() {
+  if (tab === "sell") { const p = $("#salePanel"); if (p) p.innerHTML = salePanel(); }
+  else if (tab === "topup") render();
+}
+
+/* ---------- member search ---------- */
+let findTimer;
+document.addEventListener("input", e => {
+  const f = e.target.closest("[data-find]");
+  if (f) {
+    const scope = f.dataset.find, st = scope === "sale" ? sale : top, q = f.value.trim();
+    clearTimeout(findTimer);
+    findTimer = setTimeout(async () => {
+      if (q.length < 2) { st.results = []; } else {
+        const { data, error } = await sb.rpc("find_member", { q });
+        st.results = error ? [] : data;
+        if (error) toast(errText(error));
+      }
+      const box = $("#mres-" + scope);
+      if (box) box.innerHTML = st.results.length ? st.results.map((m, i) => `<button type="button" data-pick="${scope}" data-i="${i}"><b>${esc(m.full_name || "Member")}</b> · ${esc(m.member_code)}<div class="fine">${esc(m.phone || "")} · ${money(m.balance)}</div></button>`).join("") : (q.length >= 2 ? `<p class="fine">No member found.</p>` : "");
+    }, 250);
+    return;
+  }
+  const qi = e.target.closest("[data-qty]");
+  if (qi) { sale.lines[+qi.dataset.qty].qty = qi.value; const t = saleTotals(); const pnl = $("#salePanel"); if (pnl) { pnl.querySelectorAll(".cline .amt").forEach((a, i) => { const l = sale.lines[i], p = byId(l.id); a.textContent = money((p.price || 0) * (Number(l.qty) || 0)); }); pnl.querySelector(".big").textContent = money(t.total); const c = $("#complete"); if (c) { c.textContent = "Complete sale · " + money(t.total); } } return; }
+  if (e.target.id === "tendered") { sale.tendered = e.target.value; return; }
+  if (e.target.id === "saleRef") { sale.ref = e.target.value; return; }
+  if (e.target.id === "topAmt") { top.amount = e.target.value; return; }
+  if (e.target.id === "topRef") { top.ref = e.target.value; return; }
+});
+document.addEventListener("change", e => {
+  if (e.target.closest("[data-qty]")) { sale.lines = sale.lines.filter(l => Number(l.qty) > 0); rerenderPanel(); }
+  if (e.target.id === "tendered") rerenderPanel();
+  if (e.target.id === "topAmt") render();
+  if (e.target.id === "repDay") { reportDay = e.target.value; render(); }
+});
+document.addEventListener("keydown", e => {
+  // Enter in the member box picks the only (or first) match: works with a QR scanner that types the code and presses Enter.
+  const f = e.target.closest && e.target.closest("[data-find]");
+  if (f && e.key === "Enter") {
+    e.preventDefault();
+    const scope = f.dataset.find, st = scope === "sale" ? sale : top, q = f.value.trim();
+    clearTimeout(findTimer);
+    sb.rpc("find_member", { q }).then(({ data, error }) => {
+      if (error) { toast(errText(error)); return; }
+      const exact = (data || []).find(m => m.member_code === q) || (data && data.length === 1 ? data[0] : null);
+      if (exact) { st.member = exact; st.results = []; rerenderPanel(); }
+      else { st.results = data || []; const box = $("#mres-" + scope); if (box) box.innerHTML = st.results.map((m, i) => `<button type="button" data-pick="${scope}" data-i="${i}"><b>${esc(m.full_name || "Member")}</b> · ${esc(m.member_code)}<div class="fine">${esc(m.phone || "")} · ${money(m.balance)}</div></button>`).join("") || `<p class="fine">No member found.</p>`; }
+    });
+  }
+});
+
+/* ---------- clicks ---------- */
+document.addEventListener("click", async e => {
+  const t = e.target;
+  const tb = t.closest("[data-tab]"); if (tb) { tab = tb.dataset.tab; render(); return; }
+  if (t.closest("#signout")) { await sb.auth.signOut(); return; }
+  const c = t.closest("[data-cat]"); if (c) { sale.cat = c.dataset.cat; render(); return; }
+  const a = t.closest("[data-add]");
+  if (a) {
+    const p = byId(a.dataset.add); if (sale.result) { sale.result = null; sale.lines = []; sale.member = null; sale.tendered = ""; sale.ref = ""; }
+    const ex = sale.lines.find(l => l.id === p.id), step = p.unit === "kg" ? 0.5 : 1;
+    if (ex) ex.qty = Math.round((Number(ex.qty) + step) * 1000) / 1000; else sale.lines.push({ id: p.id, qty: step });
+    rerenderPanel(); return;
+  }
+  const d = t.closest("[data-del]"); if (d) { sale.lines.splice(+d.dataset.del, 1); rerenderPanel(); return; }
+  const pk = t.closest("[data-pick]"); if (pk) { const st = pk.dataset.pick === "sale" ? sale : top; st.member = st.results[+pk.dataset.i]; st.results = []; rerenderPanel(); return; }
+  const cl = t.closest("[data-clear]"); if (cl) { const st = cl.dataset.clear === "sale" ? sale : top; st.member = null; if (st === sale && sale.pay === "wallet") sale.pay = "cash"; rerenderPanel(); return; }
+  const py = t.closest("[data-pay]"); if (py) { sale.pay = py.dataset.pay; rerenderPanel(); return; }
+  if (t.closest("#complete")) { completeSale(t.closest("#complete")); return; }
+  if (t.closest("#newSale")) { Object.assign(sale, { lines: [], member: null, pay: "cash", ref: "", tendered: "", result: null, results: [] }); rerenderPanel(); return; }
+  const am = t.closest("[data-amt]"); if (am) { top.amount = am.dataset.amt; render(); return; }
+  const tm = t.closest("[data-tm]"); if (tm) { top.method = tm.dataset.tm; render(); return; }
+  if (t.closest("#doTop")) { doTopup(t.closest("#doTop")); return; }
+  if (t.closest("#newTop")) { Object.assign(top, { member: null, amount: "", method: "cash", ref: "", result: null, results: [] }); render(); return; }
+  const st = t.closest("[data-st]");
+  if (st) { st.disabled = true; const { error } = await sb.rpc("set_order_status", { order_id: +st.dataset.st, new_status: st.dataset.to, mark_paid: false, paid_method: null }); if (error) { toast(errText(error)); st.disabled = false; } else render(); return; }
+  const pd = t.closest("[data-paid]");
+  if (pd) { const m = $("#pm-" + pd.dataset.paid).value; pd.disabled = true; const { error } = await sb.rpc("set_order_status", { order_id: +pd.dataset.paid, new_status: pd.dataset.cur === "pending" ? "paid" : pd.dataset.cur, mark_paid: true, paid_method: m }); if (error) { toast(errText(error)); pd.disabled = false; } else render(); return; }
+  const cn = t.closest("[data-cancel]");
+  if (cn) { if (!confirm(`Cancel order #${cn.dataset.cancel}? Wallet payments are refunded to the customer's wallet.`)) return; const { error } = await sb.rpc("set_order_status", { order_id: +cn.dataset.cancel, new_status: "cancelled", mark_paid: false, paid_method: null }); if (error) toast(errText(error)); else render(); return; }
+  const sp = t.closest("[data-savep]");
+  if (sp) {
+    const id = sp.dataset.savep, raw = $("#pr-" + CSS.escape(id)).value, active = $("#ac-" + CSS.escape(id)).checked;
+    const price = raw === "" ? null : Number(raw);
+    if (price != null && !(price >= 0)) { toast("Enter a valid price."); return; }
+    sp.disabled = true;
+    const { error } = await sb.from("products").update({ price, active }).eq("id", id);
+    sp.disabled = false;
+    if (error) toast(errText(error)); else { const p = byId(id); p.price = price; p.active = active; toast(`${p.name} saved.`); }
+    return;
+  }
+});
+
+document.addEventListener("submit", async e => {
+  e.preventDefault();
+  const f = e.target, v = Object.fromEntries(new FormData(f)), err = f.querySelector(".err"), btn = f.querySelector("[type=submit]");
+  btn.disabled = true; err.textContent = "";
+  try {
+    if (f.id === "signinForm") {
+      const { error } = await sb.auth.signInWithPassword({ email: v.email.trim(), password: v.password });
+      if (error) throw error;
+    } else if (f.id === "setForm") {
+      const tiers = [0, 1, 2, 3].map(i => ({ min: Number(v["tmin" + i]), pct: Number(v["tpct" + i]) })).filter(t => t.min > 0 && t.pct > 0).sort((a, b) => a.min - b.min);
+      const patch = {
+        wallet_discount_pct: Number(v.wallet_discount_pct) || 0, delivery_fee: Number(v.delivery_fee) || 0, min_order: Number(v.min_order) || 0,
+        areas: v.areas.split(",").map(s => s.trim()).filter(Boolean), momo_instructions: v.momo_instructions.trim(), topup_bonus: tiers, updated_at: new Date().toISOString(),
+      };
+      const { data, error } = await sb.from("settings").update(patch).eq("id", 1).select().single();
+      if (error) throw error;
+      settings = data; toast("Settings saved."); render();
+    }
+  } catch (ex) { err.textContent = errText(ex); }
+  finally { btn.disabled = false; }
+});
+
+/* ---------- auth ---------- */
+async function onSession(s) {
+  session = s;
+  if (!session) { me = null; render(); return; }
+  const { data } = await sb.rpc("my_summary");
+  me = data;
+  if (me && me.role !== "customer") { try { await loadAll(); } catch (ex) { toast(errText(ex)); } countOpen(); }
+  render();
+}
+let started = false;
+sb.auth.onAuthStateChange((event, s) => {
+  const changed = (s?.user?.id || null) !== (session?.user?.id || null);
+  if (started && !changed && event !== "SIGNED_OUT") { session = s; return; }
+  started = true;
+  setTimeout(() => onSession(s), 0); // never call Supabase inside this callback
+});
+setInterval(() => { if (me && me.role !== "customer") countOpen(); }, 60000);
+})();
+</script>
+</body>
+</html>

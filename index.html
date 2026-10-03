@@ -1,0 +1,588 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mutambo Beef</title>
+<meta name="description" content="Grass-fed Zambian beef from our shop near Ibex Hill, Lusaka. Order online, top up your Mutambo wallet and save on every order.">
+<meta name="theme-color" content="#de1b23">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Instrument+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="assets/mb.css">
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="swoosh" viewBox="0 0 60 8"><path d="M1 5 Q 20 9 40 4 T 59 3" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></symbol>
+    <symbol id="pin" viewBox="0 0 24 24"><path d="M12 22s7-6.2 7-12a7 7 0 1 0-14 0c0 5.8 7 12 7 12Z" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="10" r="2.6" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol>
+    <symbol id="menu-ico" viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  </defs>
+</svg>
+
+<header class="hdr">
+  <div class="wrap">
+    <a class="brand" href="#home" aria-label="Mutambo Beef home">
+      <span class="mark">MUTAMBO<svg aria-hidden="true"><use href="#swoosh"/></svg></span>
+      <span class="sub">Beef</span>
+    </a>
+    <nav class="nav" aria-label="Main">
+      <a href="#menu" data-route="menu">Menu</a>
+      <a href="#rewards" data-route="rewards">Rewards</a>
+      <a href="#delivery" data-route="delivery">Delivery</a>
+    </nav>
+    <div class="right" id="hdrRight">
+      <a class="find" href="#delivery"><svg aria-hidden="true"><use href="#pin"/></svg>Find the shop</a>
+      <span id="hdrAuth"></span>
+      <button class="burger" id="burger" type="button" aria-label="Open menu"><svg aria-hidden="true"><use href="#menu-ico"/></svg></button>
+    </div>
+  </div>
+</header>
+
+<div class="drawer" id="drawer" hidden>
+  <div class="sheet" id="drawerSheet"></div>
+</div>
+
+<main id="app"><p class="wrap spin">Loading…</p></main>
+
+<div class="obar" id="obar" hidden>
+  <div class="wrap">
+    <span class="info" id="obarInfo"></span>
+    <a class="pill pill-red" href="#order">View order</a>
+  </div>
+</div>
+
+<footer>
+  <div class="wrap">
+    <div class="cols">
+      <div><h4>Shop</h4><a href="#menu">Menu</a><a href="#cat-packs">Packs</a><a href="#order">Your order</a></div>
+      <div><h4>Rewards</h4><a href="#rewards">How rewards work</a><a href="#join">Join now</a><a href="#account">Your wallet</a></div>
+      <div><h4>Visit</h4><a href="#delivery">Delivery areas and times</a><a href="#delivery">The shop, Ibex Hill</a><a href="pos/">Staff</a></div>
+      <div><h4>Mutambo Beef</h4><p class="fine">Grass-fed Zambian beef, cut and packed to order. From our shop near Ibex Hill, Lusaka.</p></div>
+    </div>
+    <div class="legal"><span>© Mutambo Beef · Lusaka, Zambia</span><span>Wallet, cash, Airtel Money, MTN MoMo or card</span></div>
+  </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="assets/mb.js"></script>
+<script>
+(() => {
+const { sb, esc, money, when, errText, bonusFor, toast, label } = MB;
+const $ = s => document.querySelector(s);
+const CATEGORIES = [
+  { id: "packs", name: "Packs" },
+  { id: "steaks", name: "Steaks" },
+  { id: "everyday", name: "Everyday" },
+  { id: "slow", name: "Slow cook" },
+  { id: "braai", name: "Braai" },
+  { id: "offal", name: "Offal" },
+];
+const FEATURED = ["family", "braai-pack", "rump", "fillet", "mince", "wors"];
+const COPY = {
+  stew: "Bone-in pieces for stews and relish with nshima.",
+};
+
+let products = [], settings = null, session = null, me = null;
+let cart = {};
+try { cart = JSON.parse(localStorage.getItem("mb_cart") || "{}"); } catch (e) { cart = {}; }
+const co = { fulfilment: "delivery", day: null, area: "", note: "", payment: "wallet" };
+const save = () => { try { localStorage.setItem("mb_cart", JSON.stringify(cart)); } catch (e) {} };
+const byId = id => products.find(p => p.id === id);
+const liveKeys = () => Object.keys(cart).filter(k => cart[k] > 0 && byId(k));
+const stepOf = p => p.unit === "kg" ? 0.5 : 1;
+const qtyTxt = (p, q) => p.unit === "kg" ? `${q} kg` : `${q}`;
+const unitTxt = p => p.unit === "kg" ? "per kg" : "per pack";
+const priceTxt = p => p.price == null ? "Price coming soon" : `${money(p.price)} ${unitTxt(p)}`;
+const pct = () => Number(settings?.wallet_discount_pct || 0);
+const disc = p => p.img
+  ? `<span class="disc"><img src="${esc(p.img)}" alt="${esc(p.name)}" loading="lazy" width="690" height="430"></span>`
+  : `<span class="disc solid"><span class="word">${esc(p.name.replace(/ beef| steak/i, ""))}</span></span>`;
+let nextRoute = null;
+
+/* ---------- data ---------- */
+async function loadCatalogue() {
+  const [p, s] = await Promise.all([
+    sb.from("products").select("*").eq("active", true).order("sort"),
+    sb.from("settings").select("*").eq("id", 1).single(),
+  ]);
+  if (p.error) throw p.error;
+  if (s.error) throw s.error;
+  products = p.data; settings = s.data;
+  co.day = co.day || settings.delivery_days?.[0]?.id || null;
+}
+async function loadMe() {
+  if (!session) { me = null; return; }
+  const { data, error } = await sb.rpc("my_summary");
+  me = error ? null : data;
+  if (me && !co.area) co.area = me.area || "";
+}
+
+/* ---------- header ---------- */
+function header() {
+  const n = liveKeys().length;
+  const bag = `<a class="pill pill-line" href="#order" aria-label="Your order, ${n} items">Order${n ? ` · ${n}` : ""}</a>`;
+  $("#hdrAuth").innerHTML = session
+    ? `<span style="display:inline-flex;gap:10px;align-items:center"><a class="balchip" href="#account"><i></i>${me ? money(me.balance) : "Wallet"}</a>${bag}</span>`
+    : `<span style="display:inline-flex;gap:10px;align-items:center"><a class="pill pill-line" href="#signin">Sign in</a><a class="pill pill-red" href="#join">Join now</a></span>`;
+  $("#drawerSheet").innerHTML = `<button class="close" id="drawerClose" type="button" aria-label="Close menu">×</button>
+    <a href="#menu">Menu</a><a href="#rewards">Rewards</a><a href="#delivery">Delivery</a><a href="#order">Your order${n ? ` (${n})` : ""}</a>
+    ${session ? `<a href="#account">Wallet and account</a>` : `<a href="#signin">Sign in</a><a href="#join">Join now</a>`}`;
+}
+function bar() {
+  const n = liveKeys().length, r = route().name, hide = ["order", "join", "signin", "placed", "reset"].includes(r);
+  $("#obar").hidden = !n || hide;
+  document.body.classList.toggle("has-bar", n > 0 && !hide);
+  const sum = liveKeys().reduce((s, k) => s + (byId(k).price || 0) * cart[k], 0);
+  $("#obarInfo").innerHTML = `<b>${n} item${n === 1 ? "" : "s"} in your order</b>${sum ? money(sum) : ""}${session && pct() ? ` · save ${pct()}% with your wallet` : ""}`;
+}
+
+/* ---------- views ---------- */
+const views = {
+  home() {
+    const feat = FEATURED.map(byId).filter(Boolean);
+    return `
+    <div class="home-gap"></div>
+    <section class="band b-red"><div class="wrap">
+      <div class="copy">
+        <h2>Top up. Save on every order.</h2>
+        <p>Pay with your Mutambo wallet and get ${pct()}% off everything, online and in the shop. Bigger top-ups earn a bonus.</p>
+        <div class="ctas">${session
+          ? `<a class="pill pill-white pill-lg" href="#account">Your wallet</a><a class="pill pill-white-line pill-lg" href="#menu">Order now</a>`
+          : `<a class="pill pill-white pill-lg" href="#join">Join now</a><a class="pill pill-white-line pill-lg" href="#rewards">How it works</a>`}</div>
+      </div>
+      <div class="art white"><img src="img/striploin.webp" alt="Sirloin steaks" width="690" height="430"></div>
+    </div></section>
+
+    <section class="featured"><div class="wrap">
+      <h2>Popular this week</h2>
+      <div class="circles">${feat.map(p => `<a class="circ" href="#item-${esc(p.id)}">${disc(p)}<span class="nm">${esc(p.name)}</span></a>`).join("")}</div>
+    </div></section>
+
+    <section class="band b-wash flip"><div class="wrap">
+      <div class="copy">
+        <h2>The braai pack</h2>
+        <p>T-bone, boerewors, short ribs and rump. Enough for six to eight, ready for Saturday.</p>
+        <div class="ctas"><a class="pill pill-red pill-lg" href="#item-braai-pack">Order the braai pack</a></div>
+      </div>
+      <div class="art white"><img src="img/ribeye.webp" alt="Beef for the braai" width="690" height="430"></div>
+    </div></section>
+
+    <section class="band b-dark"><div class="wrap">
+      <div class="copy">
+        <h2>Delivered ${esc((settings.delivery_days || []).map(d => d.label).join(" and "))}</h2>
+        <p>Order online and pay from your wallet, or pay when it arrives. Chilled from our cold room to your door.</p>
+        <div class="ctas"><a class="pill pill-red pill-lg" href="#menu">Start an order</a><a class="pill pill-white-line pill-lg" href="#delivery">Areas and times</a></div>
+      </div>
+      <div class="art white"><img src="img/topside.webp" alt="Beef packed for delivery" width="690" height="430"></div>
+    </div></section>
+
+    <section class="band b-wash flip"><div class="wrap">
+      <div class="copy">
+        <h2>One wallet, online and in the shop</h2>
+        <p>Show your member code at the counter near Ibex Hill. Same wallet, same discount, same balance.</p>
+        <div class="ctas"><a class="pill pill-line pill-lg" href="#rewards">Mutambo Rewards</a></div>
+      </div>
+      <div class="art white"><img src="img/rump.webp" alt="Rump steak" width="690" height="430"></div>
+    </div></section>`;
+  },
+
+  menu(focus) {
+    return `<section class="page"><div class="wrap menu">
+      <nav class="rail" aria-label="Menu categories"><h4>Menu</h4>${CATEGORIES.map(c => `<a href="#cat-${c.id}" aria-current="${focus === c.id}">${esc(c.name)}</a>`).join("")}</nav>
+      <div>
+        <h1>Menu</h1>
+        <p class="fine">Cuts are sold by the half-kilo, vacuum packed and labelled by cut and date.${pct() ? ` Members save ${pct()}% paying by wallet.` : ""}</p>
+        ${CATEGORIES.map(c => { const items = products.filter(p => p.category === c.id); return items.length ? `<section class="cat" id="cat-${c.id}">
+          <h2>${esc(c.name)}</h2>
+          <div class="grid">${items.map(p => `<a class="circ" href="#item-${esc(p.id)}">${disc(p)}<span class="nm">${esc(p.name)}</span><span class="pr">${esc(priceTxt(p))}</span></a>`).join("")}</div>
+        </section>` : ""; }).join("")}
+      </div>
+    </div></section>`;
+  },
+
+  item(id) {
+    const p = byId(id); if (!p) return views.menu();
+    const cat = CATEGORIES.find(c => c.id === p.category) || { id: "", name: "Menu" };
+    const q = cart[p.id] || 0;
+    const chips = Array.isArray(p.contains) && p.contains.length ? p.contains : ["Grass-fed", p.unit === "kg" ? "Sold per half-kilo" : "Sold per pack", "Vacuum packed"];
+    return `<section class="page"><div class="wrap item">
+      <div class="hero-disc">${disc(p)}</div>
+      <div>
+        <div class="crumb"><a href="#menu">Menu</a> / <a href="#cat-${cat.id}">${esc(cat.name)}</a></div>
+        <h1>${esc(p.name)}</h1>
+        <p class="desc">${esc(p.description || COPY[p.id] || "")}</p>
+        <div class="meta">${chips.map(x => `<span class="chip">${esc(x)}</span>`).join("")}</div>
+        <div class="price">${p.price == null ? `Price coming soon` : `${money(p.price)} <small>${unitTxt(p)}${pct() ? ` · ${money(p.price * (1 - pct() / 100))} with your wallet` : ""}</small>`}</div>
+        <div class="qty">
+          <div class="step" data-id="${esc(p.id)}"><button type="button" data-d="-1" aria-label="Less">−</button><output>${qtyTxt(p, q || 1)}</output><button type="button" data-d="1" aria-label="More">+</button></div>
+          <button class="pill pill-red pill-lg" id="addBtn" type="button"${p.price == null ? " disabled" : ""}>${q ? "Update order" : "Add to order"}</button>
+        </div>
+        <p class="added" id="added" role="status"></p>
+      </div>
+    </div></section>`;
+  },
+
+  order() {
+    const keys = liveKeys();
+    const lines = keys.length ? keys.map(k => { const p = byId(k), q = cart[k]; return `<div class="ln">${disc(p)}<div><div class="t">${esc(p.name)}</div><div class="s">${p.price == null ? "Price coming soon" : money(p.price * q)}</div></div><div class="step" data-id="${esc(p.id)}" data-live="1"><button type="button" data-d="-1" aria-label="Less ${esc(p.name)}">−</button><output>${qtyTxt(p, q)}</output><button type="button" data-d="1" aria-label="More ${esc(p.name)}">+</button></div></div>`; }).join("")
+      : `<div class="empty"><p>Your order is empty.</p><a class="pill pill-red" href="#menu">Browse the menu</a></div>`;
+    return `<section class="page"><div class="wrap bag">
+      <div><h1>Your order</h1><div class="lines">${lines}</div></div>
+      <aside class="checkout" id="checkout">${checkoutPanel()}</aside>
+    </div></section>`;
+  },
+
+  placed(id) {
+    return `<section class="page"><div class="wrap auth" style="text-align:center">
+      <h1>Order placed</h1>
+      <p class="lead">Order number <b>#${esc(id)}</b>. We'll pack it fresh${co.fulfilment === "collect" ? " and have it ready at the shop." : " and deliver it on your chosen day."}</p>
+      <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+        <a class="pill pill-red pill-lg" href="#account-orders">Track your order</a><a class="pill pill-line pill-lg" href="#menu">Back to the menu</a>
+      </div>
+    </div></section>`;
+  },
+
+  rewards() {
+    const tiers = settings.topup_bonus || [];
+    return `<section class="rw-hero"><div class="wrap">
+        <h1>Mutambo Rewards</h1>
+        <p>Top up your wallet, pay with it, and save ${pct()}% on every order. Online and in the shop.</p>
+        <div class="ctas">${session ? `<a class="pill pill-white pill-lg" href="#account">Your wallet</a>` : `<a class="pill pill-white pill-lg" href="#join">Join now</a><a class="pill pill-white-line pill-lg" href="#signin">Sign in</a>`}</div>
+      </div></section>
+      <section class="wrap">
+        <div class="how">
+          <div><span class="n">1</span><h3>Join</h3><p>Create your free account. You get a six-digit member code.</p></div>
+          <div><span class="n">2</span><h3>Top up</h3><p>In the shop with cash, card or mobile money. Staff add it to your wallet straight away.</p></div>
+          <div><span class="n">3</span><h3>Save</h3><p>Pay with your wallet online or at the counter and get ${pct()}% off every time.</p></div>
+        </div>
+        ${tiers.length ? `<h2 class="sec-h">Top-up bonus</h2>
+        <div class="tiers">${tiers.map(t => `<div class="tier"><b>+${t.pct}%</b><span>when you top up ${money(t.min)} or more</span></div>`).join("")}</div>
+        <p class="fine" style="text-align:center;margin-top:14px">Example: top up ${money(1000)} and get ${money(bonusFor(settings, 1000))} added free.</p>` : ""}
+        <h2 class="sec-h">Questions</h2>
+        <div style="max-width:720px;margin:0 auto 40px">
+          <details><summary>How do I top up?</summary><p>At the shop: pay cash, card or mobile money and give staff your member code. ${esc(settings.momo_instructions || "")}</p></details>
+          <details><summary>Does the discount work in the shop?</summary><p>Yes. Show your member code or the QR code in your account at the counter and pay from your wallet.</p></details>
+          <details><summary>Can I still pay without the wallet?</summary><p>Yes. Online you can pay on delivery; in the shop you can pay cash, card or mobile money. The ${pct()}% discount is for wallet payments.</p></details>
+          <details><summary>Does my balance expire?</summary><p>No. Your balance stays in your wallet until you spend it.</p></details>
+        </div>
+      </section>`;
+  },
+
+  join() {
+    if (session) return views.account();
+    return `<section class="page"><div class="wrap auth">
+      <h1>Join Mutambo Rewards</h1>
+      <p class="lead">Save ${pct()}% every time you pay with your wallet.</p>
+      <form class="form" id="joinForm">
+        <label>Full name<input name="full_name" autocomplete="name" required></label>
+        <label>Phone<input name="phone" type="tel" autocomplete="tel" placeholder="e.g. 097 123 4567" required></label>
+        <label>Area<select name="area"><option value="">Choose your area</option>${(settings.areas || []).map(a => `<option>${esc(a)}</option>`).join("")}<option>Other</option></select></label>
+        <label>Email<input name="email" type="email" autocomplete="email" required></label>
+        <label>Password<input name="password" type="password" autocomplete="new-password" minlength="8" required></label>
+        <p class="err" id="err" role="alert"></p>
+        <button class="pill pill-red pill-lg" type="submit">Create account</button>
+      </form>
+      <p class="alt">Already a member? <a href="#signin">Sign in</a></p>
+    </div></section>`;
+  },
+
+  signin() {
+    if (session) return views.account();
+    return `<section class="page"><div class="wrap auth">
+      <h1>Sign in</h1>
+      <p class="lead">Your wallet, orders and member code.</p>
+      <form class="form" id="signinForm">
+        <label>Email<input name="email" type="email" autocomplete="email" required></label>
+        <label>Password<input name="password" type="password" autocomplete="current-password" required></label>
+        <p class="err" id="err" role="alert"></p>
+        <button class="pill pill-red pill-lg" type="submit">Sign in</button>
+      </form>
+      <p class="alt"><button type="button" class="pill pill-line" id="forgot">Forgot password</button></p>
+      <p class="alt">New here? <a href="#join">Join now</a></p>
+    </div></section>`;
+  },
+
+  reset() {
+    return `<section class="page"><div class="wrap auth">
+      <h1>Set a new password</h1>
+      <form class="form" id="resetForm">
+        <label>New password<input name="password" type="password" autocomplete="new-password" minlength="8" required></label>
+        <p class="err" id="err" role="alert"></p>
+        <button class="pill pill-red pill-lg" type="submit">Save password</button>
+      </form>
+    </div></section>`;
+  },
+
+  account(tab) {
+    if (!session) { nextRoute = "account"; return views.signin(); }
+    tab = tab || "activity";
+    const m = me || {};
+    return `<section class="page"><div class="wrap acct">
+      <div>
+        <h1>Hi${m.full_name ? ", " + esc(m.full_name.split(" ")[0]) : ""}</h1>
+        <div class="mcard">
+          <div><div class="mk">MUTAMBO REWARDS</div><div class="nm">${esc(m.full_name || "")}</div><div class="code">${esc(m.member_code || "······")}</div><div class="hint">Show this at the counter</div></div>
+          <div class="qr" id="qr" aria-label="Member QR code"></div>
+        </div>
+        <div class="box" style="margin-top:22px">
+          <div class="bal"><b>${money(m.balance)}</b><span>wallet balance</span></div>
+          <p class="fine">You save ${pct()}% when you pay with your wallet. Spent with us: ${money(m.lifetime_spend)}.</p>
+        </div>
+        <div class="box">
+          <h2>Top up</h2>
+          <p>Top up at the shop with cash, card or mobile money. Give staff your member code <b>${esc(m.member_code || "")}</b> and it's added straight away.</p>
+          <p class="fine">${esc(settings.momo_instructions || "")}</p>
+          ${(settings.topup_bonus || []).length ? `<div class="meta">${settings.topup_bonus.map(t => `<span class="chip">${money(t.min)}+ gets ${t.pct}% bonus</span>`).join("")}</div>` : ""}
+        </div>
+      </div>
+      <div>
+        <div class="tabs" role="tablist">
+          <a href="#account" aria-current="${tab === "activity"}">Wallet activity</a>
+          <a href="#account-orders" aria-current="${tab === "orders"}">Orders</a>
+          <a href="#account-profile" aria-current="${tab === "profile"}">Profile</a>
+        </div>
+        <div id="acctBody"><p class="spin">Loading…</p></div>
+      </div>
+    </div></section>`;
+  },
+
+  delivery() {
+    const days = settings.delivery_days || [];
+    return `<section class="page"><div class="wrap del">
+      <div>
+        <h1>Delivery and the shop</h1>
+        <p class="lead">We deliver chilled, in insulated cooler boxes. Order by the day before. Or collect from the shop near Ibex Hill.</p>
+        <div class="slots">${days.map(d => `<div class="slot"><b>${esc(d.label)}</b><span>${esc(d.time)}</span></div>`).join("")}</div>
+        <h2 style="margin-top:30px">Areas we deliver to</h2>
+        <div class="areas">${(settings.areas || []).map(a => `<span class="chip">${esc(a)}</span>`).join("")}</div>
+        <p class="fine" style="margin-top:12px">${Number(settings.delivery_fee) ? `Delivery is ${money(settings.delivery_fee)}.` : "Delivery is free."}${Number(settings.min_order) ? ` Minimum order ${money(settings.min_order)}.` : ""}</p>
+      </div>
+      <div>
+        <h2>How it works</h2>
+        <div class="steps">
+          <div class="stp"><span class="n">1</span><div><h3>Choose</h3><p>Pick a pack or cuts by the half-kilo.</p></div></div>
+          <div class="stp"><span class="n">2</span><div><h3>Pay</h3><p>From your wallet and save ${pct()}%, or pay when it arrives.</p></div></div>
+          <div class="stp"><span class="n">3</span><div><h3>Receive</h3><p>Delivered chilled on your chosen day, or ready to collect.</p></div></div>
+        </div>
+        <h2 style="margin-top:32px">Questions</h2>
+        <details><summary>Where does the beef come from?</summary><p>Grass-fed Zambian cattle, processed and kept chilled in a cold room, then cut and packed to order.</p></details>
+        <details><summary>Can I change or cancel an order?</summary><p>Ask at the shop before it's packed. Wallet payments for cancelled orders go straight back to your wallet.</p></details>
+        <details><summary>How do I pay on delivery?</summary><p>Cash, card or mobile money when your order arrives.</p></details>
+      </div>
+    </div></section>`;
+  },
+};
+
+/* ---------- checkout ---------- */
+function totals() {
+  const sub = liveKeys().reduce((s, k) => s + (byId(k).price || 0) * cart[k], 0);
+  const discount = co.payment === "wallet" ? Math.round(sub * pct()) / 100 : 0;
+  const fee = co.fulfilment === "delivery" ? Number(settings.delivery_fee || 0) : 0;
+  return { sub, discount, fee, total: sub - discount + fee };
+}
+function checkoutPanel() {
+  const keys = liveKeys();
+  if (!session) return `<h2>Check out</h2><p>Sign in to pay from your wallet and save ${pct()}%, or to pay on delivery.</p>
+    <a class="pill pill-red pill-lg" href="#signin" data-next="order">Sign in</a><a class="pill pill-line pill-lg" href="#join" data-next="order">Join now</a>`;
+  const t = totals(), bal = Number(me?.balance || 0), short = co.payment === "wallet" && t.total > bal;
+  const unpriced = keys.some(k => byId(k).price == null);
+  const days = settings.delivery_days || [];
+  return `<h2>Check out</h2>
+    <div><div class="fine" style="margin-bottom:6px">How</div><div class="seg" data-k="fulfilment">
+      <button type="button" data-v="delivery" aria-pressed="${co.fulfilment === "delivery"}"><b>Delivery</b><span>${Number(settings.delivery_fee) ? money(settings.delivery_fee) : "Free"}</span></button>
+      <button type="button" data-v="collect" aria-pressed="${co.fulfilment === "collect"}"><b>Collect</b><span>From the shop</span></button>
+    </div></div>
+    ${co.fulfilment === "delivery" ? `
+    <div><div class="fine" style="margin-bottom:6px">Day</div><div class="seg" data-k="day">${days.map(d => `<button type="button" data-v="${esc(d.id)}" aria-pressed="${co.day === d.id}"><b>${esc(d.label)}</b><span>${esc(d.time)}</span></button>`).join("")}</div></div>
+    <label>Area<select id="coArea"><option value="">Choose your area</option>${(settings.areas || []).map(a => `<option${co.area === a ? " selected" : ""}>${esc(a)}</option>`).join("")}</select></label>` : ""}
+    <label>Notes (optional)<textarea id="coNote" placeholder="${co.fulfilment === "delivery" ? "House number, gate code, how you'd like it cut" : "When you'll come, how you'd like it cut"}">${esc(co.note)}</textarea></label>
+    <div><div class="fine" style="margin-bottom:6px">Pay with</div><div class="seg" data-k="payment">
+      <button type="button" data-v="wallet" aria-pressed="${co.payment === "wallet"}"><b>Wallet · save ${pct()}%</b><span>Balance ${money(bal)}</span></button>
+      <button type="button" data-v="pay_on_delivery" aria-pressed="${co.payment === "pay_on_delivery"}"><b>${co.fulfilment === "collect" ? "Pay at the shop" : "Pay on delivery"}</b><span>Cash, card or MoMo</span></button>
+    </div></div>
+    <div class="rows">
+      <div class="row"><span>Subtotal</span><span class="amt">${money(t.sub)}</span></div>
+      ${t.discount ? `<div class="row"><span>Wallet discount (${pct()}%)</span><span class="amt pos">−${money(t.discount)}</span></div>` : ""}
+      ${co.fulfilment === "delivery" ? `<div class="row"><span>Delivery</span><span class="amt">${t.fee ? money(t.fee) : "Free"}</span></div>` : ""}
+      <div class="row"><b>Total</b><b class="amt">${money(t.total)}</b></div>
+    </div>
+    ${short ? `<p class="err">Your wallet has ${money(bal)}. Top up at the shop, or choose to pay ${co.fulfilment === "collect" ? "at the shop" : "on delivery"}.</p>` : ""}
+    ${unpriced ? `<p class="err">Some items don't have a price yet. Remove them to check out.</p>` : ""}
+    <p class="err" id="err" role="alert"></p>
+    <button class="pill pill-red pill-lg" id="place" type="button"${!keys.length || short || unpriced ? " disabled" : ""}>Place order · ${money(t.total)}</button>`;
+}
+function refreshCheckout() { const el = $("#checkout"); if (el) el.innerHTML = checkoutPanel(); }
+
+const dayLabel = id => { const d = (settings.delivery_days || []).find(x => x.id === id); return d ? `${d.label} ${d.time}` : id; };
+async function placeOrder(btn) {
+  const err = $("#err");
+  if (co.fulfilment === "delivery" && !co.area) { err.textContent = "Choose your area so we know where to deliver."; return; }
+  btn.disabled = true; btn.textContent = "Placing order…";
+  const items = liveKeys().map(k => ({ id: k, qty: cart[k] }));
+  const { data, error } = await sb.rpc("place_online_order", {
+    items, fulfilment: co.fulfilment, delivery_day: co.fulfilment === "delivery" ? dayLabel(co.day) : null,
+    area: co.fulfilment === "delivery" ? co.area : null, note: co.note || null, payment: co.payment,
+  });
+  if (error) { err.textContent = errText(error); btn.disabled = false; btn.textContent = "Place order"; return; }
+  cart = {}; save(); co.note = "";
+  await loadMe();
+  location.hash = "placed-" + data.order_id;
+}
+
+/* ---------- account body ---------- */
+async function fillAccount(tab) {
+  const body = $("#acctBody"); if (!body || !session) return;
+  if (me && window.QRCode && $("#qr") && !$("#qr").childElementCount) {
+    try { new QRCode($("#qr"), { text: me.member_code, width: 96, height: 96, colorDark: "#1b1613", colorLight: "#ffffff" }); } catch (e) {}
+  }
+  const uid = session.user.id;
+  if (tab === "orders") {
+    const { data, error } = await sb.from("orders").select("*, order_items(*)").eq("user_id", uid).order("created_at", { ascending: false }).limit(30);
+    if (error) { body.innerHTML = `<p class="err">${esc(errText(error))}</p>`; return; }
+    body.innerHTML = data.length ? `<div class="rows">${data.map(o => `<div class="row"><div>
+        <div><b>#${o.id}</b> · ${when(o.created_at)} <span class="tag${o.status === "cancelled" ? "" : " red"}">${esc(label(o.status))}</span></div>
+        <div class="s">${o.order_items.map(i => `${esc(i.name)} ${i.unit === "kg" ? i.qty + " kg" : "× " + i.qty}`).join(", ")}</div>
+        <div class="s">${o.channel === "pos" ? "In the shop" : esc(label(o.fulfilment)) + (o.delivery_day ? " · " + esc(o.delivery_day) : "")} · ${esc(label(o.payment_method))}${o.discount > 0 ? ` · saved ${money(o.discount)}` : ""}</div>
+      </div><span class="amt">${money(o.total)}</span></div>`).join("")}</div>`
+      : `<div class="empty"><p>No orders yet.</p><a class="pill pill-red" href="#menu">Start an order</a></div>`;
+  } else if (tab === "profile") {
+    const m = me || {};
+    body.innerHTML = `<form class="form" id="profileForm" style="max-width:460px">
+      <label>Full name<input name="full_name" value="${esc(m.full_name)}" autocomplete="name"></label>
+      <label>Phone<input name="phone" type="tel" value="${esc(m.phone)}" autocomplete="tel"></label>
+      <label>Area<select name="area"><option value="">Choose your area</option>${(settings.areas || []).concat("Other").map(a => `<option${m.area === a ? " selected" : ""}>${esc(a)}</option>`).join("")}</select></label>
+      <label>Email<input value="${esc(session.user.email)}" disabled></label>
+      <p class="err" id="err" role="alert"></p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="pill pill-red" type="submit">Save</button><button class="pill pill-line" type="button" id="signout">Sign out</button></div>
+    </form>`;
+  } else {
+    const { data, error } = await sb.from("wallet_transactions").select("*").eq("user_id", uid).order("created_at", { ascending: false }).limit(50);
+    if (error) { body.innerHTML = `<p class="err">${esc(errText(error))}</p>`; return; }
+    body.innerHTML = data.length ? `<div class="rows">${data.map(t => `<div class="row"><div><div>${esc(label(t.type))}${t.order_id ? ` · order #${t.order_id}` : ""}</div><div class="s">${when(t.created_at)}${t.type === "topup" ? " · " + esc(label(t.method)) : ""}</div></div><span class="amt${t.amount > 0 ? " pos" : ""}">${t.amount > 0 ? "+" : "−"}${money(Math.abs(t.amount))}</span></div>`).join("")}</div>`
+      : `<div class="empty"><p>No wallet activity yet. Top up at the shop to start saving ${pct()}%.</p></div>`;
+  }
+}
+
+/* ---------- router (plain #tokens) ---------- */
+function route() {
+  const h = location.hash.slice(1) || "home";
+  if (h.startsWith("item-")) return { name: "item", arg: h.slice(5) };
+  if (h.startsWith("cat-")) return { name: "menu", arg: h.slice(4) };
+  if (h.startsWith("placed-")) return { name: "placed", arg: h.slice(7) };
+  if (h.startsWith("account-")) return { name: "account", arg: h.slice(8) };
+  return { name: views[h] ? h : "home" };
+}
+function render(keepScroll) {
+  if (!settings) return;
+  const r = route();
+  $("#app").innerHTML = views[r.name](r.arg);
+  document.querySelectorAll(".nav a").forEach(a => a.setAttribute("aria-current", a.dataset.route === r.name ? "page" : "false"));
+  if (r.name === "menu" && r.arg) { const el = document.getElementById("cat-" + r.arg); if (el) el.scrollIntoView({ block: "start" }); }
+  else if (!keepScroll) window.scrollTo(0, 0);
+  if (r.name === "account" && session) fillAccount(r.arg || "activity");
+  header(); bar();
+  $("#drawer").hidden = true;
+}
+addEventListener("hashchange", () => render());
+
+/* ---------- interactions ---------- */
+document.addEventListener("click", async e => {
+  const nx = e.target.closest("[data-next]"); if (nx) nextRoute = nx.dataset.next;
+  const b = e.target.closest(".step button");
+  if (b) {
+    const s = b.closest(".step"), p = byId(s.dataset.id), d = parseInt(b.dataset.d, 10) * stepOf(p);
+    if (s.dataset.live) {
+      cart[p.id] = Math.max(0, Math.round(((cart[p.id] || 0) + d) * 2) / 2);
+      if (!cart[p.id]) delete cart[p.id];
+      save(); render(true); return;
+    }
+    const out = s.querySelector("output"), cur = parseFloat(out.textContent) || stepOf(p);
+    out.textContent = qtyTxt(p, Math.max(stepOf(p), Math.round((cur + d) * 2) / 2));
+    return;
+  }
+  if (e.target.closest("#addBtn")) {
+    const s = document.querySelector(".item .step"), p = byId(s.dataset.id);
+    cart[p.id] = parseFloat(s.querySelector("output").textContent);
+    save(); header(); bar();
+    $("#addBtn").textContent = "Update order";
+    $("#added").innerHTML = `Added. <a href="#order">View your order</a> or <a href="#menu">keep shopping</a>.`;
+    return;
+  }
+  const sg = e.target.closest(".checkout .seg button");
+  if (sg) { co[sg.parentElement.dataset.k] = sg.dataset.v; refreshCheckout(); return; }
+  const pl = e.target.closest("#place"); if (pl) { placeOrder(pl); return; }
+  if (e.target.closest("#signout")) { await sb.auth.signOut(); location.hash = "home"; return; }
+  if (e.target.closest("#forgot")) {
+    const email = document.querySelector("#signinForm [name=email]").value.trim();
+    if (!email) { $("#err").textContent = "Enter your email first, then tap Forgot password."; return; }
+    const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname });
+    $("#err").textContent = error ? errText(error) : "";
+    if (!error) toast("Check your email for a link to reset your password.");
+    return;
+  }
+  if (e.target.closest("#burger")) { $("#drawer").hidden = false; return; }
+  if (e.target.closest("#drawerClose") || e.target.id === "drawer" || e.target.closest("#drawerSheet a")) { $("#drawer").hidden = true; }
+});
+document.addEventListener("input", e => {
+  if (e.target.id === "coNote") co.note = e.target.value;
+});
+document.addEventListener("change", e => {
+  if (e.target.id === "coArea") { co.area = e.target.value; refreshCheckout(); }
+});
+document.addEventListener("submit", async e => {
+  const f = e.target; e.preventDefault();
+  const v = Object.fromEntries(new FormData(f));
+  const btn = f.querySelector("[type=submit]"), err = f.querySelector(".err");
+  btn.disabled = true; err.textContent = "";
+  try {
+    if (f.id === "joinForm") {
+      const { data, error } = await sb.auth.signUp({ email: v.email.trim(), password: v.password, options: { data: { full_name: v.full_name.trim(), phone: v.phone.trim(), area: v.area }, emailRedirectTo: location.origin + location.pathname } });
+      if (error) throw error;
+      if (!data.session) { $("#app").innerHTML = `<section class="page"><div class="wrap auth"><h1>Check your email</h1><p class="lead">We sent a link to ${esc(v.email)}. Open it to confirm your account, then sign in.</p><a class="pill pill-red pill-lg" href="#signin">Sign in</a></div></section>`; return; }
+    } else if (f.id === "signinForm") {
+      const { error } = await sb.auth.signInWithPassword({ email: v.email.trim(), password: v.password });
+      if (error) throw error;
+    } else if (f.id === "resetForm") {
+      const { error } = await sb.auth.updateUser({ password: v.password });
+      if (error) throw error;
+      toast("Password saved."); location.hash = "account";
+    } else if (f.id === "profileForm") {
+      const { error } = await sb.rpc("update_my_profile", { p_full_name: v.full_name, p_phone: v.phone, p_area: v.area });
+      if (error) throw error;
+      await loadMe(); toast("Saved."); render(true);
+    }
+  } catch (ex) { err.textContent = errText(ex); }
+  finally { btn.disabled = false; }
+});
+
+/* ---------- auth ---------- */
+sb.auth.onAuthStateChange((event, s) => {
+  // Defer: calling Supabase inside this callback can deadlock the auth client.
+  if (event === "TOKEN_REFRESHED") { session = s; return; }
+  setTimeout(async () => {
+    const was = !!session; session = s;
+    await loadMe();
+    if (event === "PASSWORD_RECOVERY") { location.hash = "reset"; return; }
+    if (!was && session && ["signin", "join"].includes(route().name)) { location.hash = nextRoute || "account"; nextRoute = null; return; }
+    if (was && !session && route().name === "account") { location.hash = "home"; return; }
+    render(true);
+  }, 0);
+});
+
+(async () => {
+  try {
+    const { data } = await sb.auth.getSession();
+    session = data.session;
+    await Promise.all([loadCatalogue(), loadMe()]);
+    render();
+  } catch (e) {
+    $("#app").innerHTML = `<section class="page"><div class="wrap"><h1>We can't load the shop right now</h1><p class="lead" style="margin-top:10px">${esc(errText(e))}. Refresh to try again.</p></div></section>`;
+  }
+})();
+})();
+</script>
+</body>
+</html>
