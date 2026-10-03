@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Mutambo Beef</title>
-<meta name="description" content="Mutambo Beef. Quality Zambian beef, delivered to your door in Lusaka.">
+<meta name="description" content="Mutambo Beef. Quality Zambian beef. Lusaka.">
 <meta name="theme-color" content="#de1b23">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -29,12 +29,9 @@
     </a>
     <nav class="nav" aria-label="Main">
       <a href="#menu" data-route="menu">Products</a>
-      <a href="#cat-packs" data-route="packs">Value packs</a>
       <a href="#rewards" data-route="rewards">Account</a>
-      <a href="#delivery" data-route="delivery">Delivery</a>
     </nav>
     <div class="right" id="hdrRight">
-      <a class="find" href="#delivery"><svg aria-hidden="true"><use href="#pin"/></svg>Delivery areas</a>
       <span id="hdrAuth"></span>
       <button class="burger" id="burger" type="button" aria-label="Open menu"><svg aria-hidden="true"><use href="#menu-ico"/></svg></button>
     </div>
@@ -56,13 +53,7 @@
 
 <footer>
   <div class="wrap">
-    <div class="cols">
-      <div><h4>Products</h4><a href="#menu">All products</a><a href="#cat-packs">Value packs</a><a href="#order">Your order</a></div>
-      <div><h4>Account</h4><a href="#rewards">Mutambo Beef Account</a><a href="#join">Open an account</a><a href="#account">Sign in</a></div>
-      <div><h4>Delivery</h4><a href="#delivery">Areas</a><a href="#delivery">How it works</a><a href="pos/">Staff</a></div>
-      <div><h4>Mutambo Beef</h4><p class="fine">Proudly Zambian. Quality beef from Zambian cattle, delivered across Lusaka.</p></div>
-    </div>
-    <div class="legal"><span>© Mutambo Beef · Lusaka, Zambia</span><span>Cash, card, Airtel Money or MTN MoMo on delivery</span></div>
+    <div class="legal" style="margin-top:0;border-top:0;padding-top:0"><span>© Mutambo Beef · Proudly Zambian · Lusaka</span><span><a href="#menu" style="display:inline">Products</a> · <a href="#rewards" style="display:inline">Account</a> · <a href="pos/" style="display:inline">Staff</a></span><span>Cash, card, Airtel Money or MTN MoMo</span></div>
   </div>
 </footer>
 
@@ -135,7 +126,7 @@ function header() {
     ? `<span style="display:inline-flex;gap:10px;align-items:center"><a class="balchip" href="#account"><i></i>${me ? money(me.balance) : "Account"}</a>${bag}</span>`
     : `<span style="display:inline-flex;gap:10px;align-items:center"><a class="pill pill-line" href="#signin">Sign in</a>${bag.replace("pill-line", "pill-red")}</span>`;
   $("#drawerSheet").innerHTML = `<button class="close" id="drawerClose" type="button" aria-label="Close menu">×</button>
-    <a href="#menu">Products</a><a href="#cat-packs">Value packs</a><a href="#rewards">Mutambo Beef Account</a><a href="#delivery">Delivery</a><a href="#order">Your order${n ? ` (${n})` : ""}</a>
+    <a href="#menu">Products</a><a href="#rewards">Mutambo Beef Account</a><a href="#order">Your order${n ? ` (${n})` : ""}</a>
     ${session ? `<a href="#account">Your account</a>` : `<a href="#signin">Sign in</a><a href="#join">Open an account</a>`}`;
 }
 function bar() {
@@ -149,53 +140,18 @@ function bar() {
 /* ---------- views ---------- */
 const views = {
   home() {
-    const feat = FEATURED.map(byId).filter(Boolean);
     return `
     <section class="hero"><div class="wrap">
       <div class="hcopy">
-        <p class="kicker">Proudly Zambian · Lusaka</p>
-        <h1>Quality Zambian beef.<br><span>Delivered to your door.</span></h1>
-        <p class="lede">Hand-selected cuts from Zambian cattle, consistent in quality and packed to the same standard every time.</p>
-        <div class="ctas"><a class="pill pill-red pill-lg" href="#menu">Shop our products</a><a class="pill pill-line pill-lg" href="#cat-packs">Family value packs</a></div>
+        <p class="kicker">Proudly Zambian</p>
+        <h1>Quality Zambian beef.</h1>
+        <p class="lede">Hand-selected cuts from Zambian cattle.</p>
+        <div class="ctas"><a class="pill pill-red pill-lg" href="#menu">Shop products</a></div>
       </div>
       <div class="hart"><img src="img/striploin.webp" alt="Sirloin" width="690" height="430"></div>
     </div></section>
-
-    <section class="proof"><div class="wrap">
-      <div><b>Zambian cattle</b><span>Grass-fed, locally raised</span></div>
-      <div><b>Hand-selected cuts</b><span>Trimmed by our butchers</span></div>
-      <div><b>Consistent quality</b><span>Vacuum packed and dated</span></div>
-      <div><b>Delivered chilled</b><span>Across Lusaka</span></div>
-    </div></section>
-
-    <section class="featured"><div class="wrap">
-      <div class="sec-row"><h2>Our products</h2><a href="#menu">View all →</a></div>
-      <div class="circles">${feat.map(p => `<a class="circ" href="#item-${esc(p.id)}">${disc(p)}<span class="nm">${esc(p.name)}</span><span class="pr">${esc(priceTxt(p))}</span></a>`).join("")}</div>
-    </div></section>
-
-    <section class="band b-wash flip"><div class="wrap">
-      <div class="copy">
-        <h2>Family value packs</h2>
-        <p>More beef for the family, for less. The family pack, the braai pack and the monthly freezer box, each priced below the same cuts bought one by one.</p>
-        <div class="ctas"><a class="pill pill-red pill-lg" href="#cat-packs">View value packs</a></div>
-      </div>
-      <div class="art white"><img src="img/ribeye.webp" alt="Ribeye" width="690" height="430"></div>
-    </div></section>
-
-    <section class="band b-red"><div class="wrap">
-      <div class="copy">
-        <h2>Mutambo Beef Account</h2>
-        <p>Load your account and save ${pct()}% on every order. Load ${money((settings.topup_bonus || [])[1]?.min || 1000)} or more and receive a bonus on top.</p>
-        <div class="ctas">${session ? `<a class="pill pill-white pill-lg" href="#account">Your account</a>` : `<a class="pill pill-white pill-lg" href="#join">Open an account</a>`}<a class="pill pill-white-line pill-lg" href="#rewards">How it works</a></div>
-      </div>
-      <div class="art white"><img src="img/tenderloin.webp" alt="Fillet" width="690" height="430"></div>
-    </div></section>
-
-    <section class="statement"><div class="wrap">
-      <p class="kicker">Our promise</p>
-      <h2>Beef for every Zambian table.</h2>
-      <p>Every cut is selected, trimmed and packed to the same standard, every time. Order online and pay on delivery.</p>
-      <a class="pill pill-red pill-lg" href="#menu">Shop our products</a>
+    <section class="page" style="padding-top:8px"><div class="wrap">
+      <div class="grid">${products.map(p => `<a class="circ" href="#item-${esc(p.id)}">${disc(p)}<span class="nm">${esc(p.name)}</span><span class="pr">${esc(priceTxt(p))}</span></a>`).join("")}</div>
     </div></section>`;
   },
 
@@ -204,7 +160,7 @@ const views = {
       <nav class="rail" aria-label="Product categories"><h4>Products</h4>${CATEGORIES.map(c => `<a href="#cat-${c.id}" aria-current="${focus === c.id}">${esc(c.name)}</a>`).join("")}</nav>
       <div>
         <h1>Our products</h1>
-        <p class="fine">Sold from 500 g. Vacuum packed and labelled by cut and date.${pct() ? ` Account holders save ${pct()}%.` : ""}</p>
+        <p class="fine">Sold from 500 g. Vacuum packed and labelled by cut and date.</p>
         ${CATEGORIES.map(c => { const items = products.filter(p => p.category === c.id); return items.length ? `<section class="cat" id="cat-${c.id}">
           <h2>${esc(c.name)}</h2>
           <div class="grid">${items.map(p => `<a class="circ" href="#item-${esc(p.id)}">${disc(p)}<span class="nm">${esc(p.name)}</span><span class="pr">${esc(priceTxt(p))}</span></a>`).join("")}</div>
@@ -248,7 +204,7 @@ const views = {
   placed(id) {
     return `<section class="page"><div class="wrap auth" style="text-align:center">
       <h1>Order placed</h1>
-      <p class="lead">Order number <b>#${esc(id)}</b>. We'll call to confirm, then cut, pack and deliver it.</p>
+      <p class="lead">Order number <b>#${esc(id)}</b>. We'll call to confirm.</p>
       <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
         ${session ? `<a class="pill pill-red pill-lg" href="#account-orders">Your orders</a>` : `<a class="pill pill-red pill-lg" href="#join">Open an account and save ${pct()}% next time</a>`}<a class="pill pill-line pill-lg" href="#menu">Continue shopping</a>
       </div>
@@ -397,24 +353,23 @@ function checkoutPanel() {
   const keys = liveKeys();
   const t = totals(), bal = Number(me?.balance || 0), short = session && co.payment === "wallet" && t.total > bal;
   const unpriced = keys.some(k => byId(k).price == null);
-  return `<h2>Delivery details</h2>
+  return `<h2>Your details</h2>
     ${session ? "" : `
     <label>Your name<input id="coName" autocomplete="name" value="${esc(co.name)}"></label>
     <label>Phone<input id="coPhone" type="tel" autocomplete="tel" placeholder="e.g. 097 123 4567" value="${esc(co.phone)}"></label>`}
-    <label>Delivery address<input id="coArea" autocomplete="street-address" placeholder="House number, street, area" value="${esc(co.area)}"></label>
-    <div><div class="fine" style="margin-bottom:6px">When</div><div class="seg" data-k="when">${WHEN.map(w => `<button type="button" data-v="${w.id}" aria-pressed="${co.when === w.id}"><b>${esc(w.label)}</b><span>${esc(w.sub)}</span></button>`).join("")}</div></div>
-    <label>Notes (optional)<textarea id="coNote" placeholder="Gate code, landmark, how you'd like it cut">${esc(co.note)}</textarea></label>
+    <label>Address<input id="coArea" autocomplete="street-address" placeholder="House number, street, area" value="${esc(co.area)}"></label>
+    <label>Notes (optional)<textarea id="coNote" placeholder="Preferred time, gate code, how you'd like it cut">${esc(co.note)}</textarea></label>
     ${session ? `<div><div class="fine" style="margin-bottom:6px">Pay</div><div class="seg" data-k="payment">
       <button type="button" data-v="wallet" aria-pressed="${co.payment === "wallet"}"><b>Account balance · save ${pct()}%</b><span>Balance ${money(bal)}</span></button>
-      <button type="button" data-v="pay_on_delivery" aria-pressed="${co.payment === "pay_on_delivery"}"><b>On delivery</b><span>Cash, card or MoMo</span></button>
-    </div></div>` : `<p class="fine">Pay on delivery with cash, card or mobile money.</p>`}
+      <button type="button" data-v="pay_on_delivery" aria-pressed="${co.payment === "pay_on_delivery"}"><b>On receipt</b><span>Cash, card or MoMo</span></button>
+    </div></div>` : `<p class="fine">Pay cash, card or mobile money when you receive it.</p>`}
     <div class="rows">
       <div class="row"><span>Subtotal</span><span class="amt">${money(t.sub)}</span></div>
       ${t.discount ? `<div class="row"><span>Prepaid discount (${pct()}%)</span><span class="amt pos">−${money(t.discount)}</span></div>` : ""}
-      <div class="row"><span>Delivery</span><span class="amt">${t.fee ? money(t.fee) : "Free"}</span></div>
+      ${t.fee ? `<div class="row"><span>Delivery</span><span class="amt">${money(t.fee)}</span></div>` : ""}
       <div class="row"><b>Total</b><b class="amt">${money(t.total)}</b></div>
     </div>
-    ${short ? `<p class="err">Your balance is ${money(bal)}. Load your account or pay on delivery.</p>` : ""}
+    ${short ? `<p class="err">Your balance is ${money(bal)}. Load your account or pay on receipt.</p>` : ""}
     ${unpriced ? `<p class="err">Some items don't have a price yet. Remove them to order.</p>` : ""}
     <p class="err" id="err" role="alert"></p>
     <button class="pill pill-red pill-lg" id="place" type="button"${!keys.length || short || unpriced ? " disabled" : ""}>Place order · ${money(t.total)}</button>
@@ -429,7 +384,7 @@ async function placeOrder(btn) {
   if (co.area.trim().length < 5) { err.textContent = "Add your delivery address."; return; }
   btn.disabled = true; btn.textContent = "Placing order…";
   const items = liveKeys().map(k => ({ id: k, qty: cart[k] }));
-  const whenTxt = WHEN.find(w => w.id === co.when).label;
+  const whenTxt = null;
   const { data, error } = session
     ? await sb.rpc("place_online_order", { items, fulfilment: "delivery", delivery_day: whenTxt, area: co.area.trim(), note: co.note || null, payment: co.payment })
     : await sb.rpc("place_guest_order", { items, full_name: co.name.trim(), phone: co.phone.trim(), area: co.area.trim(), delivery_day: whenTxt, note: co.note || null });
