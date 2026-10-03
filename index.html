@@ -322,6 +322,7 @@ const views = {
     return `<section class="page"><div class="wrap acct">
       <div>
         <h1>Hi${m.full_name ? ", " + esc(m.full_name.split(" ")[0]) : ""}</h1>
+        ${m.role === "staff" || m.role === "admin" ? `<p style="margin:-6px 0 18px"><a class="pill pill-line" href="pos/">Open the POS</a></p>` : ""}
         <div class="mcard">
           <div><div class="mk">MUTAMBO BEEF REWARDS</div><div class="nm">${esc(m.full_name || "")}</div><div class="code">${esc(m.member_code || "······")}</div><div class="hint">Show this at the counter</div></div>
           <div class="qr" id="qr" aria-label="Member QR code"></div>

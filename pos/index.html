@@ -130,7 +130,7 @@ function tabs() {
   const t = [["sell", "Sell"], ["topup", "Top up"], ["orders", "Orders" + (openCount ? `<span class="badge">${openCount}</span>` : "")], ["today", "Today"]];
   if (isAdmin()) t.push(["products", "Products"], ["settings", "Settings"]);
   $("#tabs").innerHTML = t.map(([k, v]) => `<button type="button" data-tab="${k}" aria-current="${tab === k}">${v}</button>`).join("");
-  $("#who").innerHTML = `${esc(me.full_name || session.user.email)} · <button type="button" class="pill pill-line" id="signout" style="padding:5px 12px;font-size:13px">Sign out</button>`;
+  $("#who").innerHTML = `<a href="../#account" style="font-weight:600">Shop</a> · ${esc(me.full_name || session.user.email)} · <button type="button" class="pill pill-line" id="signout" style="padding:5px 12px;font-size:13px">Sign out</button>`;
 }
 
 function memberBox(state, scope) {
