@@ -538,6 +538,12 @@ sb.auth.onAuthStateChange((event, s) => {
 });
 
 (async () => {
+  // Auth links that fail (expired or already used) come back as #error=...; show it and go to sign in.
+  if (/error_description=/.test(location.hash)) {
+    const msg = decodeURIComponent((location.hash.match(/error_description=([^&]*)/) || [])[1] || "").replace(/\+/g, " ");
+    history.replaceState(null, "", location.pathname + "#signin");
+    setTimeout(() => toast((msg || "That link didn't work") + ". Sign in with your email and password."), 300);
+  }
   try {
     const { data } = await sb.auth.getSession();
     session = data.session;
