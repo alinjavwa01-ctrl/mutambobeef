@@ -250,7 +250,7 @@ async function viewOrders() {
   if (!data.length) return `<div class="panel"><h2>No open online orders</h2><p class="fine">New orders show here as soon as they're placed.</p></div>`;
   return `<div class="ocards">${data.map(o => { const p = people[o.user_id] || {}; const nxt = o.status === "packed" ? (o.fulfilment === "delivery" ? "out_for_delivery" : "collected") : NEXT[o.status]; return `<div class="ocard">
       <div class="hd"><b>#${o.id}</b><span class="tag red">${esc(label(o.status))}</span></div>
-      <div><b>${esc(p.full_name || "Customer")}</b> · ${esc(p.phone || "")} · ${esc(p.member_code || "")}</div>
+      <div><b>${esc(p.full_name || o.guest_name || "Customer")}</b> · <a href="tel:${esc(p.phone || o.guest_phone || "")}">${esc(p.phone || o.guest_phone || "")}</a> · ${o.user_id ? esc(p.member_code || "") : "Guest"}</div>
       <div class="s">${esc(label(o.fulfilment))}${o.delivery_day ? " · " + esc(o.delivery_day) : ""}${o.area ? " · " + esc(o.area) : ""} · placed ${when(o.created_at)}</div>
       <ul>${o.order_items.map(i => `<li>${esc(i.name)} — ${i.unit === "kg" ? i.qty + " kg" : i.qty + " pack" + (i.qty > 1 ? "s" : "")}</li>`).join("")}</ul>
       ${o.note ? `<div class="s">Note: ${esc(o.note)}</div>` : ""}
