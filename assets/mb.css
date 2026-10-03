@@ -58,7 +58,8 @@ p { margin: 0; }
 .burger { display: none; width: 42px; height: 42px; border: 0; background: transparent; cursor: pointer; border-radius: 50%; }
 .burger svg { width: 24px; height: 24px; }
 @media (max-width: 900px) { .nav, .find, .hdr .pill-line { display: none; } .burger { display: inline-grid; place-items: center; } }
-@media (max-width: 420px) { .mark { font-size: 21px; } }
+.logo { display: block; width: auto; flex: none; }
+@media (max-width: 760px) { .hdr .logo { height: 44px; } }
 .drawer { position: fixed; inset: 0; z-index: 60; background: rgba(0,0,0,.4); }
 .drawer .sheet { position: absolute; right: 0; top: 0; bottom: 0; width: min(340px, 86vw); background: var(--bg); padding: calc(20px + env(safe-area-inset-top, 0px)) 24px 24px; display: flex; flex-direction: column; gap: 6px; }
 .drawer .sheet a { font: 700 22px var(--display); text-decoration: none; padding-block: 10px; }
@@ -169,7 +170,7 @@ p { margin: 0; }
 .fine { font-size: 13px; color: var(--muted); }
 
 /* Bottom order bar */
-.obar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 35; background: var(--band-dark); color: var(--on-dark); padding: 12px 0 calc(12px + env(safe-area-inset-bottom, 0px)); }
+.obar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 35; background: var(--red); color: #fff; padding: 12px 0 calc(12px + env(safe-area-inset-bottom, 0px)); }
 .obar .wrap { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .obar .info { font-size: 14px; }
 .obar .info b { font: 700 16px var(--display); display: block; }
@@ -226,7 +227,9 @@ footer .legal { margin-top: 32px; padding-top: 20px; border-top: 1px solid var(-
 
 /* Member card */
 .mcard { background: #de1b23; color: #fff; border-radius: 22px; padding: 24px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 18px; align-items: center; box-shadow: 0 18px 44px rgba(222,27,35,.25); }
-.mcard .mk { font: 800 20px/1 var(--display); letter-spacing: -.02em; }
+.mcard .mk { display: flex; align-items: center; gap: 10px; font: 700 13px/1 var(--display); letter-spacing: .14em; text-transform: uppercase; }
+.logo-card { display: block; width: auto; text-transform: none; letter-spacing: normal; }
+.box .meta { display: flex; flex-wrap: wrap; gap: 8px; }
 .mcard .nm { font: 700 18px var(--display); margin-top: 18px; }
 .mcard .code { font: 800 30px/1 var(--display); letter-spacing: .12em; margin-top: 6px; font-variant-numeric: tabular-nums; }
 .mcard .hint { font-size: 13px; opacity: .9; margin-top: 6px; }
@@ -276,3 +279,4 @@ footer .legal { margin-top: 32px; padding-top: 20px; border-top: 1px solid var(-
 .spin { color: var(--muted); padding: 40px 0; }
 .balchip { display: inline-flex; align-items: center; gap: 8px; text-decoration: none; font: 700 14px var(--display); border: 1.5px solid var(--line); border-radius: 999px; padding: 7px 14px; }
 .balchip i { width: 8px; height: 8px; border-radius: 50%; background: var(--red); }
+.seg[data-k="when"] { grid-auto-flow: row; }

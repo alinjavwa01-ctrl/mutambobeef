@@ -9,6 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Instrument+Sans:wght@400;500;600&display=swap">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cellipse cx='32' cy='32' rx='31' ry='26' fill='%23de1b23'/%3E%3Ctext x='32' y='43' text-anchor='middle' font-family='Arial' font-weight='900' font-style='italic' font-size='32' fill='white'%3EM%3C/text%3E%3C/svg%3E">
 <link rel="stylesheet" href="assets/mb.css">
 </head>
 <body>
@@ -24,7 +25,7 @@
 <header class="hdr">
   <div class="wrap">
     <a class="brand" href="#home" aria-label="Mutambo Beef home">
-      <span class="mark">MUTAMBO BEEF<svg aria-hidden="true"><use href="#swoosh"/></svg></span>
+      <svg class="logo" viewBox="0 0 200 84" height="54" role="img" aria-label="Mutambo Beef"><ellipse cx="100" cy="42" rx="98" ry="40" fill="#de1b23"/><ellipse cx="100" cy="42" rx="91" ry="33" fill="none" stroke="#fff" stroke-width="1.6"/><text transform="translate(100 45) skewX(-9)" text-anchor="middle" font-family="Manrope, Helvetica Neue, Arial, sans-serif" font-weight="800" font-size="33" letter-spacing="-1" fill="#fff">Mutambo</text><path d="M50 62.5h18M134 62.5h18" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/><text x="103" y="68" text-anchor="middle" font-family="Manrope, Helvetica Neue, Arial, sans-serif" font-weight="800" font-size="15" letter-spacing="5" fill="#fff">BEEF</text></svg>
     </a>
     <nav class="nav" aria-label="Main">
       <a href="#menu" data-route="menu">Menu</a>
@@ -48,7 +49,7 @@
 <div class="obar" id="obar" hidden>
   <div class="wrap">
     <span class="info" id="obarInfo"></span>
-    <a class="pill pill-red" href="#order">View order</a>
+    <a class="pill pill-white" href="#order">View order</a>
   </div>
 </div>
 
@@ -79,6 +80,11 @@ const CATEGORIES = [
   { id: "braai", name: "Braai" },
   { id: "offal", name: "Offal" },
 ];
+const WHEN = [
+  { id: "asap", label: "As soon as possible", sub: "Packed and sent now" },
+  { id: "later", label: "Later today", sub: "Say a time in the notes" },
+  { id: "tomorrow", label: "Tomorrow", sub: "Say a time in the notes" },
+];
 const FEATURED = ["family", "braai-pack", "rump", "fillet", "mince", "wors"];
 const COPY = {
   stew: "Bone-in pieces for stews and relish with nshima.",
@@ -87,7 +93,7 @@ const COPY = {
 let products = [], settings = null, session = null, me = null;
 let cart = {};
 try { cart = JSON.parse(localStorage.getItem("mb_cart") || "{}"); } catch (e) { cart = {}; }
-const co = { fulfilment: "delivery", day: null, area: "", note: "", payment: "wallet" };
+const co = { fulfilment: "delivery", when: "asap", area: "", note: "", payment: "wallet" };
 const save = () => { try { localStorage.setItem("mb_cart", JSON.stringify(cart)); } catch (e) {} };
 const byId = id => products.find(p => p.id === id);
 const liveKeys = () => Object.keys(cart).filter(k => cart[k] > 0 && byId(k));
@@ -110,7 +116,6 @@ async function loadCatalogue() {
   if (p.error) throw p.error;
   if (s.error) throw s.error;
   products = p.data; settings = s.data;
-  co.day = co.day || settings.delivery_days?.[0]?.id || null;
 }
 async function loadMe() {
   if (!session) { me = null; return; }
@@ -169,11 +174,11 @@ const views = {
       <div class="art white"><img src="img/ribeye.webp" alt="Beef for the braai" width="690" height="430"></div>
     </div></section>
 
-    <section class="band b-dark"><div class="wrap">
+    <section class="band b-red"><div class="wrap">
       <div class="copy">
-        <h2>Delivered ${esc((settings.delivery_days || []).map(d => d.label).join(" and "))}</h2>
-        <p>Order online and pay from your wallet, or pay when it arrives. Chilled from our cold room to your door.</p>
-        <div class="ctas"><a class="pill pill-red pill-lg" href="#menu">Start an order</a><a class="pill pill-white-line pill-lg" href="#delivery">Areas and times</a></div>
+        <h2>Delivered when you want it</h2>
+        <p>Order now and choose as soon as possible, later today or tomorrow. Pay from your wallet or when it arrives.</p>
+        <div class="ctas"><a class="pill pill-white pill-lg" href="#menu">Start an order</a><a class="pill pill-white-line pill-lg" href="#delivery">Delivery areas</a></div>
       </div>
       <div class="art white"><img src="img/topside.webp" alt="Beef packed for delivery" width="690" height="430"></div>
     </div></section>
@@ -324,7 +329,7 @@ const views = {
         <h1>Hi${m.full_name ? ", " + esc(m.full_name.split(" ")[0]) : ""}</h1>
         ${m.role === "staff" || m.role === "admin" ? `<p style="margin:-6px 0 18px"><a class="pill pill-line" href="pos/">Open the POS</a></p>` : ""}
         <div class="mcard">
-          <div><div class="mk">MUTAMBO BEEF REWARDS</div><div class="nm">${esc(m.full_name || "")}</div><div class="code">${esc(m.member_code || "······")}</div><div class="hint">Show this at the counter</div></div>
+          <div><div class="mk"><svg class="logo-card" viewBox="0 0 200 84" height="46" role="img" aria-label="Mutambo Beef"><ellipse cx="100" cy="42" rx="98" ry="40" fill="#fff"/><ellipse cx="100" cy="42" rx="91" ry="33" fill="none" stroke="#de1b23" stroke-width="1.6"/><text transform="translate(100 45) skewX(-9)" text-anchor="middle" font-family="Manrope, Helvetica Neue, Arial, sans-serif" font-weight="800" font-size="33" letter-spacing="-1" fill="#de1b23">Mutambo</text><path d="M50 62.5h18M134 62.5h18" stroke="#de1b23" stroke-width="1.6" stroke-linecap="round"/><text x="103" y="68" text-anchor="middle" font-family="Manrope, Helvetica Neue, Arial, sans-serif" font-weight="800" font-size="15" letter-spacing="5" fill="#de1b23">BEEF</text></svg><span>Rewards</span></div><div class="nm">${esc(m.full_name || "")}</div><div class="code">${esc(m.member_code || "······")}</div><div class="hint">Show this at the counter</div></div>
           <div class="qr" id="qr" aria-label="Member QR code"></div>
         </div>
         <div class="box" style="margin-top:22px">
@@ -350,12 +355,11 @@ const views = {
   },
 
   delivery() {
-    const days = settings.delivery_days || [];
     return `<section class="page"><div class="wrap del">
       <div>
         <h1>Delivery and the shop</h1>
-        <p class="lead">We deliver chilled, in insulated cooler boxes. Order by the day before. Or collect from the shop near Ibex Hill.</p>
-        <div class="slots">${days.map(d => `<div class="slot"><b>${esc(d.label)}</b><span>${esc(d.time)}</span></div>`).join("")}</div>
+        <p class="lead">We deliver chilled, in insulated cooler boxes, when it suits you. Or collect from the shop near Ibex Hill.</p>
+        <div class="slots">${WHEN.map(w => `<div class="slot"><b>${esc(w.label)}</b><span>${esc(w.sub)}</span></div>`).join("")}</div>
         <h2 style="margin-top:30px">Areas we deliver to</h2>
         <div class="areas">${(settings.areas || []).map(a => `<span class="chip">${esc(a)}</span>`).join("")}</div>
         <p class="fine" style="margin-top:12px">${Number(settings.delivery_fee) ? `Delivery is ${money(settings.delivery_fee)}.` : "Delivery is free."}${Number(settings.min_order) ? ` Minimum order ${money(settings.min_order)}.` : ""}</p>
@@ -369,6 +373,7 @@ const views = {
         </div>
         <h2 style="margin-top:32px">Questions</h2>
         <details><summary>Where does the beef come from?</summary><p>Grass-fed Zambian cattle, processed and kept chilled in a cold room, then cut and packed to order.</p></details>
+        <details><summary>How fast is delivery?</summary><p>Choose as soon as possible and we pack and send it straight away. Or pick later today or tomorrow and tell us a time in the notes.</p></details>
         <details><summary>Can I change or cancel an order?</summary><p>Ask at the shop before it's packed. Wallet payments for cancelled orders go straight back to your wallet.</p></details>
         <details><summary>How do I pay on delivery?</summary><p>Cash, card or mobile money when your order arrives.</p></details>
       </div>
@@ -389,14 +394,13 @@ function checkoutPanel() {
     <a class="pill pill-red pill-lg" href="#signin" data-next="order">Sign in</a><a class="pill pill-line pill-lg" href="#join" data-next="order">Join now</a>`;
   const t = totals(), bal = Number(me?.balance || 0), short = co.payment === "wallet" && t.total > bal;
   const unpriced = keys.some(k => byId(k).price == null);
-  const days = settings.delivery_days || [];
   return `<h2>Check out</h2>
     <div><div class="fine" style="margin-bottom:6px">How</div><div class="seg" data-k="fulfilment">
       <button type="button" data-v="delivery" aria-pressed="${co.fulfilment === "delivery"}"><b>Delivery</b><span>${Number(settings.delivery_fee) ? money(settings.delivery_fee) : "Free"}</span></button>
       <button type="button" data-v="collect" aria-pressed="${co.fulfilment === "collect"}"><b>Collect</b><span>From the shop</span></button>
     </div></div>
     ${co.fulfilment === "delivery" ? `
-    <div><div class="fine" style="margin-bottom:6px">Day</div><div class="seg" data-k="day">${days.map(d => `<button type="button" data-v="${esc(d.id)}" aria-pressed="${co.day === d.id}"><b>${esc(d.label)}</b><span>${esc(d.time)}</span></button>`).join("")}</div></div>
+    <div><div class="fine" style="margin-bottom:6px">When</div><div class="seg" data-k="when">${WHEN.map(w => `<button type="button" data-v="${w.id}" aria-pressed="${co.when === w.id}"><b>${esc(w.label)}</b><span>${esc(w.sub)}</span></button>`).join("")}</div></div>
     <label>Area<select id="coArea"><option value="">Choose your area</option>${(settings.areas || []).map(a => `<option${co.area === a ? " selected" : ""}>${esc(a)}</option>`).join("")}</select></label>` : ""}
     <label>Notes (optional)<textarea id="coNote" placeholder="${co.fulfilment === "delivery" ? "House number, gate code, how you'd like it cut" : "When you'll come, how you'd like it cut"}">${esc(co.note)}</textarea></label>
     <div><div class="fine" style="margin-bottom:6px">Pay with</div><div class="seg" data-k="payment">
@@ -416,14 +420,13 @@ function checkoutPanel() {
 }
 function refreshCheckout() { const el = $("#checkout"); if (el) el.innerHTML = checkoutPanel(); }
 
-const dayLabel = id => { const d = (settings.delivery_days || []).find(x => x.id === id); return d ? `${d.label} ${d.time}` : id; };
 async function placeOrder(btn) {
   const err = $("#err");
   if (co.fulfilment === "delivery" && !co.area) { err.textContent = "Choose your area so we know where to deliver."; return; }
   btn.disabled = true; btn.textContent = "Placing order…";
   const items = liveKeys().map(k => ({ id: k, qty: cart[k] }));
   const { data, error } = await sb.rpc("place_online_order", {
-    items, fulfilment: co.fulfilment, delivery_day: co.fulfilment === "delivery" ? dayLabel(co.day) : null,
+    items, fulfilment: co.fulfilment, delivery_day: co.fulfilment === "delivery" ? WHEN.find(w => w.id === co.when).label : null,
     area: co.fulfilment === "delivery" ? co.area : null, note: co.note || null, payment: co.payment,
   });
   if (error) { err.textContent = errText(error); btn.disabled = false; btn.textContent = "Place order"; return; }
