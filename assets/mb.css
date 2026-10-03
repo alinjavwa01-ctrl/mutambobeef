@@ -285,7 +285,7 @@ footer .legal { margin-top: 32px; padding-top: 20px; border-top: 1px solid var(-
 .hero { padding-block: 56px 40px; }
 .hero .wrap { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 40px; align-items: center; }
 .kicker { font: 700 13px var(--display); letter-spacing: .16em; text-transform: uppercase; color: var(--red); margin-bottom: 18px; }
-.hero h1 { font-size: clamp(42px, 6.2vw, 84px); font-weight: 800; letter-spacing: -.035em; line-height: 1; }
+.hero h1 { font-size: clamp(38px, 4.6vw, 64px); font-weight: 800; letter-spacing: -.035em; line-height: 1; }
 .hero h1 span { color: var(--red); }
 .hero .lede { font-size: 20px; color: var(--ink-2); max-width: 36ch; margin-top: 22px; }
 .hero .ctas { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 28px; }
