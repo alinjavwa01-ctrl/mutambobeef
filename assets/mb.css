@@ -15,16 +15,7 @@
   --display: "Manrope", "Helvetica Neue", Helvetica, Arial, sans-serif;
   --body: "Instrument Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
   --measure: 1240px;
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --red: #ff4d55; --red-600: #ff7a80; --on-red: #1a0a0b; --ink: #f4efeb; --ink-2: #cbc2bc; --muted: #9b918a;
-    --line: #2f2724; --wash: #1d1715; --bg: #120e0d; --surface: #1a1412; --band-dark: #261e1b; --on-dark: #f4efeb; color-scheme: dark;
-  }
-}
-:root[data-theme="dark"] {
-  --red: #ff4d55; --red-600: #ff7a80; --on-red: #1a0a0b; --ink: #f4efeb; --ink-2: #cbc2bc; --muted: #9b918a;
-  --line: #2f2724; --wash: #1d1715; --bg: #120e0d; --surface: #1a1412; --band-dark: #261e1b; --on-dark: #f4efeb; color-scheme: dark;
+  color-scheme: light;
 }
 * { box-sizing: border-box; }
 html, body { background: var(--bg); }
