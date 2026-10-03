@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Mutambo Beef</title>
-<meta name="description" content="Grass-fed Zambian beef from our shop near Ibex Hill, Lusaka. Order online, top up your Mutambo wallet and save on every order.">
+<meta name="description" content="Grass-fed Zambian beef from our shop near Ibex Hill, Lusaka. Order online, top up your Mutambo Beef wallet and save on every order.">
 <meta name="theme-color" content="#de1b23">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -24,8 +24,7 @@
 <header class="hdr">
   <div class="wrap">
     <a class="brand" href="#home" aria-label="Mutambo Beef home">
-      <span class="mark">MUTAMBO<svg aria-hidden="true"><use href="#swoosh"/></svg></span>
-      <span class="sub">Beef</span>
+      <span class="mark">MUTAMBO BEEF<svg aria-hidden="true"><use href="#swoosh"/></svg></span>
     </a>
     <nav class="nav" aria-label="Main">
       <a href="#menu" data-route="menu">Menu</a>
@@ -148,7 +147,7 @@ const views = {
     <section class="band b-red"><div class="wrap">
       <div class="copy">
         <h2>Top up. Save on every order.</h2>
-        <p>Pay with your Mutambo wallet and get ${pct()}% off everything, online and in the shop. Bigger top-ups earn a bonus.</p>
+        <p>Pay with your Mutambo Beef wallet and get ${pct()}% off everything, online and in the shop. Bigger top-ups earn a bonus.</p>
         <div class="ctas">${session
           ? `<a class="pill pill-white pill-lg" href="#account">Your wallet</a><a class="pill pill-white-line pill-lg" href="#menu">Order now</a>`
           : `<a class="pill pill-white pill-lg" href="#join">Join now</a><a class="pill pill-white-line pill-lg" href="#rewards">How it works</a>`}</div>
@@ -183,7 +182,7 @@ const views = {
       <div class="copy">
         <h2>One wallet, online and in the shop</h2>
         <p>Show your member code at the counter near Ibex Hill. Same wallet, same discount, same balance.</p>
-        <div class="ctas"><a class="pill pill-line pill-lg" href="#rewards">Mutambo Rewards</a></div>
+        <div class="ctas"><a class="pill pill-line pill-lg" href="#rewards">Mutambo Beef Rewards</a></div>
       </div>
       <div class="art white"><img src="img/rump.webp" alt="Rump steak" width="690" height="430"></div>
     </div></section>`;
@@ -248,7 +247,7 @@ const views = {
   rewards() {
     const tiers = settings.topup_bonus || [];
     return `<section class="rw-hero"><div class="wrap">
-        <h1>Mutambo Rewards</h1>
+        <h1>Mutambo Beef Rewards</h1>
         <p>Top up your wallet, pay with it, and save ${pct()}% on every order. Online and in the shop.</p>
         <div class="ctas">${session ? `<a class="pill pill-white pill-lg" href="#account">Your wallet</a>` : `<a class="pill pill-white pill-lg" href="#join">Join now</a><a class="pill pill-white-line pill-lg" href="#signin">Sign in</a>`}</div>
       </div></section>
@@ -274,7 +273,7 @@ const views = {
   join() {
     if (session) return views.account();
     return `<section class="page"><div class="wrap auth">
-      <h1>Join Mutambo Rewards</h1>
+      <h1>Join Mutambo Beef Rewards</h1>
       <p class="lead">Save ${pct()}% every time you pay with your wallet.</p>
       <form class="form" id="joinForm">
         <label>Full name<input name="full_name" autocomplete="name" required></label>
@@ -324,7 +323,7 @@ const views = {
       <div>
         <h1>Hi${m.full_name ? ", " + esc(m.full_name.split(" ")[0]) : ""}</h1>
         <div class="mcard">
-          <div><div class="mk">MUTAMBO REWARDS</div><div class="nm">${esc(m.full_name || "")}</div><div class="code">${esc(m.member_code || "······")}</div><div class="hint">Show this at the counter</div></div>
+          <div><div class="mk">MUTAMBO BEEF REWARDS</div><div class="nm">${esc(m.full_name || "")}</div><div class="code">${esc(m.member_code || "······")}</div><div class="hint">Show this at the counter</div></div>
           <div class="qr" id="qr" aria-label="Member QR code"></div>
         </div>
         <div class="box" style="margin-top:22px">

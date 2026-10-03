@@ -46,7 +46,7 @@ p { margin: 0; }
 .hdr .wrap { display: flex; align-items: center; gap: 28px; height: 84px; }
 @media (max-width: 760px) { .hdr .wrap { height: 68px; gap: 14px; } }
 .brand { display: flex; align-items: center; gap: 12px; text-decoration: none; }
-.mark { position: relative; font: 800 26px/1 var(--display); letter-spacing: -.03em; color: var(--red); padding-bottom: 6px; }
+.mark { position: relative; white-space: nowrap; font: 800 26px/1 var(--display); letter-spacing: -.03em; color: var(--red); padding-bottom: 6px; }
 .mark svg { position: absolute; left: 1px; right: 1px; bottom: -2px; width: calc(100% - 2px); height: 8px; }
 .brand .sub { font: 700 11px/1.2 var(--display); letter-spacing: .14em; text-transform: uppercase; color: var(--ink); border-left: 1px solid var(--line); padding-left: 12px; }
 .nav { display: flex; gap: 26px; font: 700 14px var(--display); letter-spacing: .06em; text-transform: uppercase; }
@@ -58,7 +58,7 @@ p { margin: 0; }
 .burger { display: none; width: 42px; height: 42px; border: 0; background: transparent; cursor: pointer; border-radius: 50%; }
 .burger svg { width: 24px; height: 24px; }
 @media (max-width: 900px) { .nav, .find, .hdr .pill-line { display: none; } .burger { display: inline-grid; place-items: center; } }
-@media (max-width: 420px) { .brand .sub { display: none; } }
+@media (max-width: 420px) { .mark { font-size: 21px; } }
 .drawer { position: fixed; inset: 0; z-index: 60; background: rgba(0,0,0,.4); }
 .drawer .sheet { position: absolute; right: 0; top: 0; bottom: 0; width: min(340px, 86vw); background: var(--bg); padding: calc(20px + env(safe-area-inset-top, 0px)) 24px 24px; display: flex; flex-direction: column; gap: 6px; }
 .drawer .sheet a { font: 700 22px var(--display); text-decoration: none; padding-block: 10px; }
