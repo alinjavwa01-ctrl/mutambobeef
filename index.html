@@ -506,6 +506,10 @@ document.addEventListener("submit", async e => {
     if (f.id === "joinForm") {
       const { data, error } = await sb.auth.signUp({ email: v.email.trim(), password: v.password, options: { data: { full_name: v.full_name.trim(), phone: v.phone.trim(), area: v.area }, emailRedirectTo: location.origin + location.pathname } });
       if (error) throw error;
+      if (!data.session) { // accounts are auto-confirmed in the database, so sign straight in
+        const r = await sb.auth.signInWithPassword({ email: v.email.trim(), password: v.password });
+        if (!r.error) return;
+      }
       if (!data.session) { $("#app").innerHTML = `<section class="page"><div class="wrap auth"><h1>Check your email</h1><p class="lead">We sent a link to ${esc(v.email)}. Open it to confirm your account, then sign in.</p><a class="pill pill-red pill-lg" href="#signin">Sign in</a></div></section>`; return; }
     } else if (f.id === "signinForm") {
       const { error } = await sb.auth.signInWithPassword({ email: v.email.trim(), password: v.password });
