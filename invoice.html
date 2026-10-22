@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Invoice · Mutambo Beef</title>
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#de1b23">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Instrument+Sans:wght@400;500;600&display=swap">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cellipse cx='32' cy='32' rx='31' ry='26' fill='%23de1b23'/%3E%3Ctext x='32' y='43' text-anchor='middle' font-family='Arial' font-weight='900' font-style='italic' font-size='32' fill='white'%3EM%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="/assets/mb.css">
+<style>
+/* Public invoice page: opens straight to one invoice from its link, no sign-in. */
+html, body { background: var(--wash); }
+.ibar { max-width: 794px; margin: 0 auto; padding: 16px 16px 12px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; justify-content: space-between; }
+.ibar .acts { display: flex; gap: 8px; flex-wrap: wrap; }
+.ishell { padding: 0 16px 40px; }
+.ishell .inv { box-shadow: 0 10px 40px rgba(27,22,19,.08); border-radius: 6px; }
+.ipay { max-width: 794px; margin: 0 auto 12px; padding: 0 16px; }
+.ipay .box { background: #fff; }
+.imsg { max-width: 520px; margin: 60px auto; padding: 0 16px; text-align: center; display: flex; flex-direction: column; gap: 14px; align-items: center; }
+@media (max-width: 640px) { .ishell { padding: 0 0 32px; } .ishell .inv { border-radius: 0; box-shadow: none; } }
+@media print { .ibar, .ipay { display: none; } html, body { background: #fff; } .ishell { padding: 0; } .ishell .inv { box-shadow: none; } }
+</style>
+<style id="invcss"></style>
+</head>
+<body>
+<main id="app"><p class="spin" style="text-align:center">Loading invoice…</p></main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="/assets/mb.js"></script>
+<script src="/assets/invoice.js"></script>
+<script>
+(() => {
+const { sb, esc, errText, toast } = MB;
+const T = MBInvoice;
+document.getElementById("invcss").textContent = T.css;
+const token = decodeURIComponent((location.pathname.match(/\/i\/([^/?#]+)/) || [])[1] || new URLSearchParams(location.search).get("t") || "");
+const app = document.getElementById("app");
+let inv = null;
+
+function view() {
+  if (!inv) {
+    app.innerHTML = `<div class="imsg"><svg viewBox="0 0 200 84" height="54" aria-hidden="true"><ellipse cx="100" cy="42" rx="98" ry="40" fill="#de1b23"/></svg><h1 style="font-size:26px">We can't find that invoice</h1><p class="fine">Check the link in your message, or ask Mutambo Beef to send it again.</p><a class="pill pill-red" href="/">Mutambo Beef</a></div>`;
+    return;
+  }
+  document.title = `${inv.number} · Mutambo Beef`;
+  const open = inv.status === "sent" || inv.status === "opened";
+  const canPay = inv.pay_from_balance && inv.mine && open;
+  const due = Math.round(Number(inv.total_k) * (100 - Number(inv.balance_discount_pct || 0))) / 100;
+  app.innerHTML = `
+    <div class="ibar">
+      <a class="pill pill-line" href="/#account-invoices">See all your invoices</a>
+      <div class="acts">
+        <a class="pill pill-red" href="/api/invoice-pdf?t=${encodeURIComponent(token)}" download="${esc(inv.number)}.pdf">Download PDF</a>
+      </div>
+    </div>
+    ${inv.pay_from_balance && open ? `<div class="ipay"><div class="box">
+      ${canPay ? `<p>Pay from your account balance and save ${esc(inv.balance_discount_pct)}%: <b>${T.kw(due)}</b> instead of ${T.kw(inv.total_k)}. Balance ${T.kw(inv.balance)}.</p>
+        <p class="err" id="perr" role="alert"></p>
+        <button class="pill pill-red" id="payBal" type="button"${Number(inv.balance) < due ? " disabled" : ""}>Pay ${T.kw(due)} from balance</button>`
+      : `<p>Have a Mutambo Beef balance? <a href="/#signin" id="signinPay">Sign in</a> to pay this invoice from it and save ${esc(inv.balance_discount_pct)}%.</p>`}
+    </div></div>` : ""}
+    <div class="ishell">${T.render(inv)}</div>`;
+}
+
+async function load() {
+  if (!token) { view(); return; }
+  try {
+    const { data, error } = await sb.rpc("open_invoice", { p_token: token });
+    if (error) throw error;
+    inv = data;
+  } catch (e) { app.innerHTML = `<div class="imsg"><h1 style="font-size:26px">We can't load the invoice right now</h1><p class="fine">${esc(errText(e))}. Refresh to try again.</p></div>`; return; }
+  view();
+}
+
+document.addEventListener("click", async e => {
+  if (e.target.closest("#signinPay")) { try { sessionStorage.setItem("mb_next", location.pathname); } catch (x) {} return; }
+  const b = e.target.closest("#payBal"); if (!b) return;
+  b.disabled = true; b.textContent = "Paying…";
+  const { error } = await sb.rpc("pay_invoice_from_balance", { p_token: token });
+  if (error) { document.getElementById("perr").textContent = errText(error); b.disabled = false; b.textContent = "Pay from balance"; return; }
+  toast("Paid. Thank you."); load();
+});
+
+load();
+})();
+</script>
+</body>
+</html>
