@@ -1,0 +1,10 @@
+{
+  "name": "mutambobeef",
+  "private": true,
+  "description": "Mutambo Beef site. Static HTML plus one serverless function for invoice PDFs.",
+  "engines": { "node": "22.x" },
+  "dependencies": {
+    "@sparticuz/chromium": "147.0.2",
+    "puppeteer-core": "24.42.0"
+  }
+}

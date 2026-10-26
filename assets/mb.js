@@ -24,6 +24,7 @@ window.MB = (() => {
     wallet: "Wallet", cash: "Cash", mobile_money: "Mobile money", card: "Card", pay_on_delivery: "Pay on delivery", gateway: "Online",
     pending: "Pending", paid: "Paid", packed: "Packed", out_for_delivery: "Out for delivery", delivered: "Delivered",
     collected: "Collected", completed: "Completed", cancelled: "Cancelled", delivery: "Delivery", collect: "Collect", in_store: "In store",
+    draft: "Draft", sent: "Sent", opened: "Opened", void: "Void", balance: "Balance", momo: "MoMo", bank: "Bank",
   };
   const label = k => LABEL[k] || k;
   return { sb, esc, money, when, errText, bonusFor, toast, label };

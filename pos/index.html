@@ -81,7 +81,32 @@ table.pt { width: 100%; border-collapse: collapse; background: var(--surface); b
 .joinqr { display: flex; gap: 14px; align-items: center; }
 .joinqr .q { background: #fff; padding: 6px; border-radius: 10px; width: 92px; height: 92px; flex: none; }
 .joinqr .q img, .joinqr .q canvas { width: 80px !important; height: 80px !important; }
+/* Invoices */
+.ihead { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.ihead .owed { font: 800 22px var(--display); }
+.irow { cursor: pointer; }
+.irow:hover td { background: var(--wash); }
+.pt td.r, .pt th.r { text-align: right; font-variant-numeric: tabular-nums; }
+.tag.st-draft { background: var(--wash); }
+.tag.st-sent { background: #fff3cd; color: #7a5a00; }
+.tag.st-opened { background: #e6f0ff; color: #1d4ed8; }
+.tag.st-paid { background: #e3f4e8; color: #1f7a3d; }
+.tag.st-void { background: var(--line); color: var(--muted); text-decoration: line-through; }
+.iline { display: grid; grid-template-columns: minmax(0, 1.4fr) 92px 100px 104px 28px; gap: 8px; align-items: center; padding-block: 6px; border-bottom: 1px solid var(--line); }
+.iline input { width: 100%; padding: 9px; border: 1px solid var(--line); border-radius: 8px; font: 600 15px var(--body); background: var(--surface); color: var(--ink); }
+.iline input[type=number] { text-align: right; }
+.iline .amt { text-align: right; }
+.iline .x { border: 0; background: transparent; font-size: 20px; cursor: pointer; color: var(--muted); }
+.iline.hd { font: 700 11px var(--display); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--ink); }
+@media (max-width: 640px) { .iline { grid-template-columns: minmax(0, 1fr) 74px 82px 28px; } .iline .amt { display: none; } }
+.ipreview { background: var(--wash); border-radius: 14px; padding: 12px; overflow: auto; }
+.ipreview .inv { border-radius: 6px; box-shadow: 0 6px 24px rgba(0,0,0,.06); }
+.wa { background: #1f7a3d; color: #fff; }
+.wa:hover { background: #18602f; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@media (max-width: 640px) { .grid2 { grid-template-columns: 1fr; } }
 </style>
+<style id="invcss"></style>
 </head>
 <body>
 <header class="pbar"><div class="in">
@@ -94,6 +119,7 @@ table.pt { width: 100%; border-collapse: collapse; background: var(--surface); b
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="../assets/mb.js"></script>
+<script src="../assets/invoice.js"></script>
 <script>
 (() => {
 const { sb, esc, money, when, errText, bonusFor, toast, label } = MB;
@@ -107,6 +133,9 @@ let tab = "sell", openCount = 0;
 const sale = { cat: "all", lines: [], member: null, pay: "cash", ref: "", tendered: "", result: null, results: [] };
 const top = { member: null, amount: "", method: "cash", ref: "", result: null, results: [] };
 let reportDay = new Date(Date.now() + 2 * 3600e3).toISOString().slice(0, 10); // Lusaka is UTC+2
+const todayLusaka = () => new Date(Date.now() + 2 * 3600e3).toISOString().slice(0, 10);
+const blankInv = () => ({ id: null, member: null, results: [], newAcct: false, editAcct: false, date: todayLusaka(), lines: [{ cut: "", kg: "", price: "" }], deliveredTo: "", signedBy: "", noteUrl: "", noteFile: null });
+const invs = { mode: "list", filter: "unpaid", q: "", list: [], cur: null, form: blankInv() };
 
 const byId = id => products.find(p => p.id === id);
 const isAdmin = () => me && me.role === "admin";
@@ -128,7 +157,7 @@ async function countOpen() {
 /* ---------- chrome ---------- */
 function tabs() {
   if (!me || me.role === "customer") { $("#tabs").innerHTML = ""; $("#who").innerHTML = ""; return; }
-  const t = [["sell", "Sell"], ["topup", "Top up"], ["orders", "Orders" + (openCount ? `<span class="badge">${openCount}</span>` : "")], ["today", "Today"]];
+  const t = [["sell", "Sell"], ["topup", "Top up"], ["orders", "Orders" + (openCount ? `<span class="badge">${openCount}</span>` : "")], ["invoices", "Invoices"], ["today", "Today"]];
   if (isAdmin()) t.push(["products", "Products"], ["settings", "Settings"]);
   $("#tabs").innerHTML = t.map(([k, v]) => `<button type="button" data-tab="${k}" aria-current="${tab === k}">${v}</button>`).join("");
   $("#who").innerHTML = `<a href="../#account" style="font-weight:600">Shop</a> · ${esc(me.full_name || session.user.email)} · <button type="button" class="pill pill-line" id="signout" style="padding:5px 12px;font-size:13px">Sign out</button>`;
@@ -140,7 +169,7 @@ function memberBox(state, scope) {
     return `<div class="mem"><div><b>${esc(m.full_name || "Member")}</b><div class="s">${esc(m.member_code)} · ${esc(m.phone || "")}</div><div class="s">Wallet ${money(m.balance)}</div></div><button type="button" class="pill pill-line" data-clear="${scope}">Change</button></div>`;
   }
   return `<div class="fld">Member (code, phone or name)<input class="inp" data-find="${scope}" placeholder="e.g. 482915" autocomplete="off" inputmode="search"></div>
-    <div class="mres" id="mres-${scope}">${state.results.map((m, i) => `<button type="button" data-pick="${scope}" data-i="${i}"><b>${esc(m.full_name || "Member")}</b> · ${esc(m.member_code)}<div class="fine">${esc(m.phone || "")} · ${money(m.balance)}</div></button>`).join("")}</div>`;
+    <div class="mres" id="mres-${scope}">${state.results.map((m, i) => `<button type="button" data-pick="${scope}" data-i="${i}"><b>${esc(m.business_name || m.full_name || "Member")}</b> · ${esc(m.member_code)}<div class="fine">${esc(m.phone || "")} · ${money(m.balance)}</div></button>`).join("")}</div>`;
 }
 
 /* ---------- sell ---------- */
@@ -263,6 +292,273 @@ async function viewOrders() {
     </div>`; }).join("")}</div>`;
 }
 
+/* ---------- invoices ---------- */
+// Staff raise an invoice against a customer account, then send its link on WhatsApp. The link opens the invoice without signing in.
+const INV_FILTERS = [["unpaid", "Unpaid"], ["all", "All"], ["paid", "Paid"], ["void", "Void"]];
+const PAY_METHODS = [["momo", "MoMo"], ["cash", "Cash"], ["bank", "Bank"], ["balance", "Balance"]];
+const invLink = tok => location.origin + "/i/" + encodeURIComponent(tok);
+const stTag = st => `<span class="tag st-${esc(st)}">${esc(label(st))}</span>`;
+const waHref = inv => {
+  const to = String(inv.bill_to?.phone || "").replace(/\D/g, "");
+  const msg = `Mutambo Beef invoice ${inv.number} for ${MBInvoice.kw(inv.total_k)}, due on delivery: ${invLink(inv.public_token)}`;
+  return `https://wa.me/${to}?text=${encodeURIComponent(msg)}`;
+};
+const cutName = p => p.name.replace(/ steak| roast| beef/i, "");
+const kgProducts = () => products.filter(p => p.unit === "kg");
+const priceFor = cut => { const c = String(cut || "").trim().toLowerCase(); const p = kgProducts().find(p => cutName(p).toLowerCase() === c || p.name.toLowerCase() === c); return p && p.price != null ? p.price : ""; };
+const lineAmt = l => Math.round((Number(l.kg) || 0) * (Number(l.price) || 0) * 100) / 100;
+const invTotals = () => invs.form.lines.reduce((t, l) => ({ kg: t.kg + (Number(l.kg) || 0), k: t.k + lineAmt(l) }), { kg: 0, k: 0 });
+const acctName = m => m.business_name || m.full_name || "Customer";
+
+async function viewInvoices() {
+  $("#invcss").textContent = MBInvoice.css;
+  if (invs.mode === "form") return invForm();
+  if (invs.mode === "detail") return invDetail();
+  let q = sb.from("invoices").select("id, number, public_token, status, invoice_date, total_kg, total_k, bill_to, sent_at, opened_at, paid_at, paid_method").order("id", { ascending: false }).limit(300);
+  if (invs.filter === "unpaid") q = q.in("status", ["draft", "sent", "opened"]);
+  else if (invs.filter !== "all") q = q.eq("status", invs.filter);
+  const [{ data, error }, owedR] = await Promise.all([q, sb.from("invoices").select("total_k").in("status", ["sent", "opened"])]);
+  if (error) return `<p class="err">${esc(errText(error))}</p>`;
+  invs.list = data;
+  const owed = (owedR.data || []).reduce((a, r) => a + Number(r.total_k), 0);
+  const s = invs.q.trim().toLowerCase();
+  const rows = data.filter(i => !s || i.number.toLowerCase().includes(s) || String(i.bill_to?.name || "").toLowerCase().includes(s));
+  return `<div class="ihead">
+      <div><div class="fine">Owed on sent invoices</div><div class="owed">${money(owed)}</div></div>
+      <button type="button" class="pill pill-red pill-lg" id="invNew">New invoice</button>
+    </div>
+    <div class="ihead">
+      <div class="chips" style="margin:0">${INV_FILTERS.map(([k, v]) => `<button type="button" data-invf="${k}" aria-pressed="${invs.filter === k}">${v}</button>`).join("")}</div>
+      <input class="inp" id="invQ" placeholder="Search number or customer" value="${esc(invs.q)}" style="max-width:280px">
+    </div>
+    ${rows.length ? `<div class="tblwrap"><table class="pt"><thead><tr><th>Number</th><th>Customer</th><th>Date</th><th class="r">Kg</th><th class="r">Total</th><th>Status</th><th>Opened</th></tr></thead><tbody>
+      ${rows.map(i => `<tr class="irow" data-inv="${i.id}"><td><b>${esc(i.number)}</b></td><td>${esc(i.bill_to?.name || "")}</td><td>${esc(MBInvoice.day(i.invoice_date))}</td><td class="r">${MBInvoice.kg(i.total_kg)}</td><td class="r"><b>${money(i.total_k)}</b></td><td>${stTag(i.status)}${i.status === "paid" ? ` <span class="fine">${esc(MBInvoice.day(i.paid_at))}</span>` : ""}</td><td class="fine">${i.opened_at ? when(i.opened_at) : "—"}</td></tr>`).join("")}
+    </tbody></table></div>` : `<div class="panel"><p class="fine">${invs.filter === "unpaid" ? "Nothing unpaid." : "No invoices here yet."}</p></div>`}
+    ${settings.momo_auto_match ? `<form class="panel form" id="momoForm" style="margin-top:16px;max-width:560px"><h2>MoMo received</h2><p class="fine">Payments with an invoice number as the reference are matched and marked paid.</p>
+      <div class="grid2"><label>Transaction ID<input name="txn" required></label><label>Amount (K)<input name="amount" type="number" step="0.01" min="0" required></label><label>Reference<input name="ref" placeholder="MB-INV-2026-001"></label><label>From<input name="sender" placeholder="Name or number"></label></div>
+      <p class="err" role="alert"></p><button class="pill pill-red" type="submit">Record payment</button></form>` : ""}`;
+}
+
+/* new / edit draft */
+function acctBox() {
+  const f = invs.form, m = f.member;
+  if (f.newAcct) return `<div class="panel" style="background:var(--wash)"><h2>New account</h2>
+      <div class="grid2">
+        <div class="fld">Business name<input class="inp" id="naBiz" placeholder="e.g. Grandaddy's Shoka Nyama"></div>
+        <div class="fld">Contact name<input class="inp" id="naName" placeholder="e.g. Olly"></div>
+        <div class="fld">Phone / WhatsApp<input class="inp" id="naPhone" type="tel" placeholder="+260 97 123 4567"></div>
+        <div class="fld">TPIN (optional)<input class="inp" id="naTpin" inputmode="numeric"></div>
+      </div>
+      <div class="fld">Address<input class="inp" id="naAddr" placeholder="Plot, road, area, town"></div>
+      <p class="err" id="naErr" role="alert"></p>
+      <div style="display:flex;gap:8px"><button type="button" class="pill pill-red" id="naSave">Create account</button><button type="button" class="pill pill-line" id="naCancel">Cancel</button></div></div>`;
+  if (m && f.editAcct) return `<div class="panel" style="background:var(--wash)"><h2>${esc(acctName(m))} · ${esc(m.member_code)}</h2>
+      <div class="grid2">
+        <div class="fld">Business name<input class="inp" id="eaBiz" value="${esc(m.business_name)}"></div>
+        <div class="fld">Contact name<input class="inp" id="eaName" value="${esc(m.full_name)}"></div>
+        <div class="fld">WhatsApp<input class="inp" id="eaWa" type="tel" value="${esc(m.whatsapp || m.phone)}"></div>
+        <div class="fld">TPIN<input class="inp" id="eaTpin" value="${esc(m.tpin)}"></div>
+      </div>
+      <div class="fld">Address<input class="inp" id="eaAddr" value="${esc(m.address)}"></div>
+      <p class="err" id="eaErr" role="alert"></p>
+      <div style="display:flex;gap:8px"><button type="button" class="pill pill-red" id="eaSave">Save details</button><button type="button" class="pill pill-line" id="eaCancel">Cancel</button></div></div>`;
+  if (m) return `<div class="mem"><div><b>${esc(acctName(m))}</b>
+      <div class="s">${m.business_name && m.full_name ? "Attn: " + esc(m.full_name) + " · " : ""}${esc(MBInvoice.fmtPhone(m.whatsapp || m.phone || ""))} · account ${esc(m.member_code)}</div>
+      <div class="s">${esc(m.address || "No address yet")}${m.tpin ? " · TPIN " + esc(m.tpin) : ""}</div></div>
+      ${invs.form.id ? "" : `<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end"><button type="button" class="pill pill-line" id="eaOpen">Edit details</button><button type="button" class="pill pill-line" data-clear="inv">Change</button></div>`}</div>`;
+  return `<div class="fld">Customer account (name, business, phone or account number)<input class="inp" data-find="inv" placeholder="e.g. Grandaddy's or 482915" autocomplete="off" inputmode="search"></div>
+    <div class="mres" id="mres-inv">${f.results.map((r, i) => `<button type="button" data-pick="inv" data-i="${i}"><b>${esc(acctName(r))}</b> · ${esc(r.member_code)}<div class="fine">${esc(r.full_name || "")} · ${esc(r.phone || "")}</div></button>`).join("")}</div>
+    <p><button type="button" class="pill pill-line" id="naOpen">+ New account</button></p>`;
+}
+function invForm() {
+  const f = invs.form, t = invTotals();
+  return `<datalist id="cutlist">${[...new Set(kgProducts().map(cutName).concat(["Silverside", "Topside", "Rump", "Sirloin", "Fillet", "Brisket", "Chuck", "Shin", "Mince"]))].map(c => `<option value="${esc(c)}">`).join("")}</datalist>
+  <div class="panel" style="max-width:860px;margin:0 auto">
+    <div class="ihead" style="margin:0"><h2>${f.id ? "Edit draft " + esc(f.number) : "New invoice"}</h2><button type="button" class="pill pill-line" id="invBack">Cancel</button></div>
+    <div id="acctBox">${acctBox()}</div>
+    <div class="grid2"><div class="fld">Delivery date (= invoice date, due on delivery)<input class="inp" type="date" id="invDate" value="${esc(f.date)}"></div></div>
+    <div>
+      <div class="iline hd"><span>Cut</span><span style="text-align:right">Kg</span><span style="text-align:right">K / kg</span><span class="amt">Amount</span><span></span></div>
+      <div id="invLines">${f.lines.map((l, i) => `<div class="iline">
+        <input list="cutlist" value="${esc(l.cut)}" data-il="${i}" data-k="cut" placeholder="Cut" aria-label="Cut">
+        <input type="number" inputmode="decimal" step="0.01" min="0" value="${esc(l.kg)}" data-il="${i}" data-k="kg" placeholder="0.00" aria-label="Kg">
+        <input type="number" inputmode="decimal" step="0.01" min="0" value="${esc(l.price)}" data-il="${i}" data-k="price" placeholder="0" aria-label="Price per kg">
+        <span class="amt" data-amt="${i}">${money(lineAmt(l))}</span>
+        <button type="button" class="x" data-ildel="${i}" aria-label="Remove line">×</button></div>`).join("")}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+        <button type="button" class="pill pill-line" id="ilAdd">+ Line</button>
+        ${kgProducts().filter(p => p.active).slice(0, 8).map(p => `<button type="button" class="pill pill-line" data-iladd="${esc(cutName(p))}" style="font-size:13px;padding:6px 12px">${esc(cutName(p))}</button>`).join("")}
+      </div>
+    </div>
+    <div class="rows"><div class="row"><b>Total</b><span class="big" id="invTot">${MBInvoice.kg(t.kg)} kg · ${money(t.k)}</span></div></div>
+    <details${f.signedBy || f.deliveredTo || f.noteUrl ? " open" : ""} style="border:0;padding:0"><summary>Delivery details (optional)</summary>
+      <div class="grid2" style="margin-top:10px">
+        <div class="fld">Delivered to<input class="inp" id="invTo" value="${esc(f.deliveredTo)}" placeholder="${esc(f.member?.address || "Address")}"></div>
+        <div class="fld">Signed for by<input class="inp" id="invSigned" value="${esc(f.signedBy)}" placeholder="Name on the delivery note"></div>
+      </div>
+      <div class="fld" style="margin-top:10px">Photo of the signed delivery note${f.noteUrl ? ` · <a href="${esc(f.noteUrl)}" target="_blank" rel="noopener">current photo</a>` : ""}<input class="inp" type="file" id="invPhoto" accept="image/*,application/pdf" capture="environment"></div>
+    </details>
+    <p class="err" id="invErr" role="alert"></p>
+    <button type="button" class="pill pill-red pill-lg" id="invSave">${f.id ? "Save draft" : "Create invoice"} · ${money(t.k)}</button>
+  </div>`;
+}
+function rerenderInv() { if (tab === "invoices" && invs.mode === "form") { const b = $("#acctBox"); if (b) b.innerHTML = acctBox(); } }
+function refreshInvTotals() {
+  const t = invTotals();
+  invs.form.lines.forEach((l, i) => { const a = document.querySelector(`[data-amt="${i}"]`); if (a) a.textContent = money(lineAmt(l)); });
+  const tot = $("#invTot"); if (tot) tot.textContent = `${MBInvoice.kg(t.kg)} kg · ${money(t.k)}`;
+  const b = $("#invSave"); if (b) b.textContent = `${invs.form.id ? "Save draft" : "Create invoice"} · ${money(t.k)}`;
+}
+async function saveInvoice(btn) {
+  const f = invs.form, err = $("#invErr");
+  if (!f.member) { err.textContent = "Choose the customer account first."; return; }
+  const lines = f.lines.filter(l => String(l.cut).trim() || l.kg || l.price);
+  if (!lines.length) { err.textContent = "Add at least one line."; return; }
+  btn.disabled = true; btn.textContent = "Saving…"; err.textContent = "";
+  try {
+    if (f.noteFile) {
+      const ext = (f.noteFile.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "");
+      const path = `${crypto.randomUUID()}/delivery-note.${ext}`;
+      const up = await sb.storage.from("delivery-notes").upload(path, f.noteFile, { contentType: f.noteFile.type || undefined });
+      if (up.error) throw up.error;
+      f.noteUrl = sb.storage.from("delivery-notes").getPublicUrl(path).data.publicUrl; f.noteFile = null;
+    }
+    const args = { p_invoice_date: f.date, p_lines: lines.map(l => ({ cut: String(l.cut).trim(), kg: Number(l.kg), price_per_kg_k: Number(l.price) })),
+      p_delivered_to: f.deliveredTo.trim() || (f.signedBy.trim() || f.noteUrl ? f.member.address || "" : ""), p_signed_by: f.signedBy, p_delivery_note_url: f.noteUrl || null };
+    const { data, error } = f.id ? await sb.rpc("update_invoice_draft", { p_id: f.id, ...args }) : await sb.rpc("create_invoice", { p_account: f.member.id, ...args });
+    if (error) throw error;
+    invs.cur = data.id; invs.mode = "detail"; invs.form = blankInv();
+    toast(`${data.number} saved. Send it on WhatsApp.`); render();
+  } catch (e) { err.textContent = errText(e); btn.disabled = false; refreshInvTotals(); }
+}
+
+/* detail */
+async function invDetail() {
+  const { data: inv, error } = await sb.from("invoices").select("*, invoice_lines(cut, kg, price_per_kg_k, amount_k, sort)").eq("id", invs.cur).single();
+  if (error) return `<p class="err">${esc(errText(error))}</p>`;
+  inv.lines = inv.invoice_lines.sort((a, b) => a.sort - b.sort);
+  invs.detail = inv;
+  const open = ["draft", "sent", "opened"].includes(inv.status);
+  return `<div style="display:grid;grid-template-columns:minmax(0,380px) minmax(0,1fr);gap:16px;align-items:start" class="idet">
+    <div class="panel sticky">
+      <div class="ihead" style="margin:0"><button type="button" class="pill pill-line" id="invBack">← Invoices</button>${stTag(inv.status)}</div>
+      <h2 style="font-size:22px">${esc(inv.number)}</h2>
+      <div><b>${esc(inv.bill_to?.name || "")}</b><div class="fine">${esc(MBInvoice.fmtPhone(inv.bill_to?.phone || ""))}</div></div>
+      <div class="big">${money(inv.total_k)}</div>
+      ${inv.status !== "void" ? `<a class="pill pill-lg wa" href="${esc(waHref(inv))}" target="_blank" rel="noopener" data-wasent="${inv.id}">${inv.status === "draft" ? "Send on WhatsApp" : "Send again on WhatsApp"}</a>` : ""}
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button type="button" class="pill pill-line" id="invCopy">Copy link</button>
+        <a class="pill pill-line" href="${esc(invLink(inv.public_token))}" target="_blank" rel="noopener">Open</a>
+        <a class="pill pill-line" href="/api/invoice-pdf?t=${encodeURIComponent(inv.public_token)}">PDF</a>
+        ${inv.status === "draft" ? `<button type="button" class="pill pill-line" id="invEdit">Edit</button>` : ""}
+      </div>
+      <div class="rows">
+        <div class="row"><span>Created</span><span class="fine">${when(inv.created_at)}</span></div>
+        <div class="row"><span>Sent</span><span class="fine">${inv.sent_at ? when(inv.sent_at) : "—"}</span></div>
+        <div class="row"><span>Opened by customer</span><span class="fine">${inv.opened_at ? when(inv.opened_at) : "Not yet"}</span></div>
+        ${inv.status === "paid" ? `<div class="row"><span>Paid</span><span class="fine">${when(inv.paid_at)} · ${esc(MBInvoice.METHOD[inv.paid_method] || inv.paid_method)}${inv.paid_ref ? " · " + esc(inv.paid_ref) : ""}</span></div>` : ""}
+        ${inv.status === "void" ? `<div class="row"><span>Voided</span><span class="fine">${when(inv.voided_at)} · ${esc(inv.void_reason)}</span></div>` : ""}
+      </div>
+      ${open ? `<div class="form" style="gap:10px"><h2>Mark paid</h2>
+        <div class="pay" id="payM">${PAY_METHODS.map(([k, v]) => `<button type="button" data-pm="${k}" aria-pressed="${(invs.payMethod || "momo") === k}">${v}${k === "balance" ? `<span>${settings.wallet_discount_pct}% off, from account</span>` : ""}</button>`).join("")}</div>
+        <div class="grid2"><div class="fld">Reference${(invs.payMethod || "momo") === "cash" || invs.payMethod === "balance" ? " (optional)" : ""}<input class="inp" id="payRef" placeholder="Transaction ID"></div>
+        <div class="fld">Paid on<input class="inp" type="date" id="payOn" value="${todayLusaka()}"></div></div>
+        <p class="err" id="payErr" role="alert"></p>
+        <button type="button" class="pill pill-red" id="payDo">Mark paid</button></div>
+      <details style="border:0;padding:0"><summary>Void this invoice</summary>
+        <div class="form" style="gap:10px;margin-top:10px"><div class="fld">Reason (required)<input class="inp" id="voidWhy" placeholder="e.g. Wrong weights, replaced by a new invoice"></div>
+        <p class="err" id="voidErr" role="alert"></p><button type="button" class="pill pill-line" id="voidDo">Void ${esc(inv.number)}</button></div></details>` : ""}
+    </div>
+    <div class="ipreview">${MBInvoice.render({ ...inv, token: inv.public_token })}</div>
+  </div>
+  <style>@media (max-width: 980px) { .idet { grid-template-columns: 1fr !important; } }</style>`;
+}
+
+document.addEventListener("input", e => {
+  if (tab !== "invoices") return;
+  const t = e.target, f = invs.form;
+  const il = t.closest("[data-il]");
+  if (il) {
+    const l = f.lines[+il.dataset.il]; l[il.dataset.k] = t.value;
+    if (il.dataset.k === "cut" && (l.price === "" || l.autoPrice)) { const p = priceFor(t.value); if (p !== "") { l.price = p; l.autoPrice = true; const pi = document.querySelector(`[data-il="${il.dataset.il}"][data-k="price"]`); if (pi) pi.value = p; } }
+    if (il.dataset.k === "price") l.autoPrice = false;
+    refreshInvTotals(); return;
+  }
+  if (t.id === "invDate") f.date = t.value;
+  else if (t.id === "invTo") f.deliveredTo = t.value;
+  else if (t.id === "invSigned") f.signedBy = t.value;
+  else if (t.id === "invQ") { invs.q = t.value; clearTimeout(invs.qt); invs.qt = setTimeout(async () => { const pos = t.selectionStart; $("#app").innerHTML = await viewInvoices(); const q = $("#invQ"); if (q) { q.focus(); q.setSelectionRange(pos, pos); } }, 250); }
+});
+document.addEventListener("change", e => {
+  if (e.target.id === "invPhoto") invs.form.noteFile = e.target.files[0] || null;
+});
+document.addEventListener("click", async e => {
+  if (tab !== "invoices") return;
+  const t = e.target, f = invs.form;
+  const fl = t.closest("[data-invf]"); if (fl) { invs.filter = fl.dataset.invf; render(); return; }
+  const row = t.closest("[data-inv]"); if (row) { invs.cur = +row.dataset.inv; invs.mode = "detail"; invs.payMethod = "momo"; render(); return; }
+  if (t.closest("#invNew")) { invs.form = blankInv(); invs.mode = "form"; render(); return; }
+  if (t.closest("#invBack")) { invs.mode = "list"; invs.form = blankInv(); render(); return; }
+  if (t.closest("#ilAdd")) { f.lines.push({ cut: "", kg: "", price: "" }); render(); return; }
+  const qa = t.closest("[data-iladd]");
+  if (qa) { const empty = f.lines.find(l => !String(l.cut).trim() && !l.kg); const l = { cut: qa.dataset.iladd, kg: "", price: priceFor(qa.dataset.iladd), autoPrice: true }; if (empty) Object.assign(empty, l); else f.lines.push(l); render(); setTimeout(() => { const i = f.lines.indexOf(empty || l); const k = document.querySelector(`[data-il="${i}"][data-k="kg"]`); if (k) k.focus(); }, 0); return; }
+  const dl = t.closest("[data-ildel]"); if (dl) { f.lines.splice(+dl.dataset.ildel, 1); if (!f.lines.length) f.lines.push({ cut: "", kg: "", price: "" }); render(); return; }
+  if (t.closest("#invSave")) { saveInvoice(t.closest("#invSave")); return; }
+  if (t.closest("#naOpen")) { f.newAcct = true; rerenderInv(); return; }
+  if (t.closest("#naCancel")) { f.newAcct = false; rerenderInv(); return; }
+  if (t.closest("#naSave")) {
+    const b = t.closest("#naSave"); b.disabled = true;
+    const { data, error } = await sb.rpc("staff_create_account", { p_full_name: $("#naName").value, p_phone: $("#naPhone").value, p_business_name: $("#naBiz").value, p_address: $("#naAddr").value, p_tpin: $("#naTpin").value, p_whatsapp: null });
+    if (error) { $("#naErr").textContent = errText(error); b.disabled = false; return; }
+    f.member = data; f.newAcct = false; f.results = []; toast(`Account ${data.member_code} created.`); rerenderInv(); return;
+  }
+  if (t.closest("#eaOpen")) { f.editAcct = true; rerenderInv(); return; }
+  if (t.closest("#eaCancel")) { f.editAcct = false; rerenderInv(); return; }
+  if (t.closest("#eaSave")) {
+    const b = t.closest("#eaSave"); b.disabled = true;
+    const v = { p_id: f.member.id, p_full_name: $("#eaName").value, p_business_name: $("#eaBiz").value, p_address: $("#eaAddr").value, p_tpin: $("#eaTpin").value, p_whatsapp: $("#eaWa").value };
+    const { error } = await sb.rpc("staff_update_account", v);
+    if (error) { $("#eaErr").textContent = errText(error); b.disabled = false; return; }
+    Object.assign(f.member, { full_name: v.p_full_name || f.member.full_name, business_name: v.p_business_name, address: v.p_address, tpin: v.p_tpin, whatsapp: v.p_whatsapp });
+    f.editAcct = false; rerenderInv(); return;
+  }
+  const wa = t.closest("[data-wasent]");
+  if (wa) { sb.rpc("mark_invoice_sent", { p_id: +wa.dataset.wasent }).then(({ error }) => { if (error) toast(errText(error)); else setTimeout(render, 600); }); return; }
+  if (t.closest("#invCopy")) { const u = invLink(invs.detail.public_token); try { await navigator.clipboard.writeText(u); toast("Link copied."); } catch (x) { prompt("Copy the link:", u); } return; }
+  if (t.closest("#invEdit")) {
+    const d = invs.detail;
+    const { data: acct } = await sb.from("profiles").select("id, full_name, phone, member_code, business_name, address, area, tpin, whatsapp").eq("id", d.account_id).single();
+    invs.form = { ...blankInv(), id: d.id, number: d.number, member: acct ? { ...acct, address: acct.address || acct.area } : { id: d.account_id }, date: d.invoice_date,
+      lines: d.lines.map(l => ({ cut: l.cut, kg: String(l.kg), price: String(l.price_per_kg_k) })), deliveredTo: d.delivered_to || "", signedBy: d.signed_by || "", noteUrl: d.delivery_note_url || "" };
+    invs.mode = "form"; render(); return;
+  }
+  const pm = t.closest("[data-pm]"); if (pm) { invs.payMethod = pm.dataset.pm; document.querySelectorAll("[data-pm]").forEach(b => b.setAttribute("aria-pressed", b === pm)); return; }
+  if (t.closest("#payDo")) {
+    const b = t.closest("#payDo"), m = invs.payMethod || "momo", ref = $("#payRef").value.trim();
+    if ((m === "momo" || m === "bank") && !ref) { $("#payErr").textContent = `Add the ${m === "momo" ? "MoMo transaction ID" : "bank reference"}.`; return; }
+    b.disabled = true;
+    const { data, error } = await sb.rpc("mark_invoice_paid", { p_id: invs.detail.id, p_method: m, p_ref: ref || null, p_paid_on: $("#payOn").value || null });
+    if (error) { $("#payErr").textContent = errText(error); b.disabled = false; return; }
+    toast(`${data.number} marked paid.`); render(); return;
+  }
+  if (t.closest("#voidDo")) {
+    const why = $("#voidWhy").value.trim();
+    if (why.length < 3) { $("#voidErr").textContent = "Say why it's being voided."; return; }
+    if (!confirm(`Void ${invs.detail.number}? The number is kept and can't be reused.`)) return;
+    const { error } = await sb.rpc("void_invoice", { p_id: invs.detail.id, p_reason: why });
+    if (error) { $("#voidErr").textContent = errText(error); return; }
+    toast(`${invs.detail.number} voided.`); render(); return;
+  }
+});
+document.addEventListener("submit", async e => {
+  if (e.target.id !== "momoForm") return;
+  e.preventDefault(); e.stopImmediatePropagation();
+  const f = e.target, v = Object.fromEntries(new FormData(f)), err = f.querySelector(".err");
+  const { data, error } = await sb.rpc("record_momo_payment", { p_txn_id: v.txn, p_amount: Number(v.amount), p_reference: v.ref, p_sender: v.sender });
+  if (error) { err.textContent = errText(error); return; }
+  toast(data.matched ? `Matched: ${data.number} marked paid.` : `Recorded. ${data.reason}.`); render();
+}, true);
+
 /* ---------- today ---------- */
 async function viewToday() {
   const { data: r, error } = await sb.rpc("day_report", { day: reportDay });
@@ -308,6 +604,8 @@ function viewSettings() {
     <label>Minimum online order (K)<input name="min_order" type="number" step="1" min="0" value="${s.min_order}"></label>
     <label>Delivery areas (comma separated)<input name="areas" value="${esc((s.areas || []).join(", "))}"></label>
     <label>Mobile money instructions<textarea name="momo_instructions">${esc(s.momo_instructions || "")}</textarea></label>
+    <label style="flex-direction:row;align-items:center;gap:10px"><input type="checkbox" name="invoice_pay_from_balance" style="width:auto"${s.invoice_pay_from_balance ? " checked" : ""}> Customers can pay invoices from their balance (${s.wallet_discount_pct}% off)</label>
+    <label style="flex-direction:row;align-items:center;gap:10px"><input type="checkbox" name="momo_auto_match" style="width:auto"${s.momo_auto_match ? " checked" : ""}> Match MoMo payments to invoices by reference</label>
     <div class="fld">Top-up bonus tiers (top up at least K…, get %)${tiers.map((t, i) => `<div style="display:flex;gap:8px"><input class="inp" name="tmin${i}" type="number" placeholder="K min" value="${t.min}"><input class="inp" name="tpct${i}" type="number" step="0.5" placeholder="%" value="${t.pct}"></div>`).join("")}</div>
     <p class="err" role="alert"></p>
     <button type="submit" class="pill pill-red pill-lg">Save settings</button>
@@ -333,20 +631,23 @@ async function render() {
   else if (tab === "topup") { app.innerHTML = viewTopup(); const q = $("#joinQr"); if (q && window.QRCode) try { new QRCode(q, { text: location.origin + location.pathname.replace(/pos\/?(index\.html)?$/, "") + "#join", width: 80, height: 80 }); } catch (e) {} }
   else if (tab === "orders") { app.innerHTML = `<p class="spin">Loading orders…</p>`; app.innerHTML = await viewOrders(); }
   else if (tab === "today") { app.innerHTML = `<p class="spin">Loading…</p>`; app.innerHTML = await viewToday(); }
+  else if (tab === "invoices") { app.innerHTML = `<p class="spin">Loading…</p>`; app.innerHTML = await viewInvoices(); }
   else if (tab === "products" && isAdmin()) app.innerHTML = viewProducts();
   else if (tab === "settings" && isAdmin()) app.innerHTML = viewSettings();
 }
 function rerenderPanel() {
   if (tab === "sell") { const p = $("#salePanel"); if (p) p.innerHTML = salePanel(); }
   else if (tab === "topup") render();
+  else if (tab === "invoices") rerenderInv();
 }
+const scopeState = scope => scope === "sale" ? sale : scope === "inv" ? invs.form : top;
 
 /* ---------- member search ---------- */
 let findTimer;
 document.addEventListener("input", e => {
   const f = e.target.closest("[data-find]");
   if (f) {
-    const scope = f.dataset.find, st = scope === "sale" ? sale : top, q = f.value.trim();
+    const scope = f.dataset.find, st = scopeState(scope), q = f.value.trim();
     clearTimeout(findTimer);
     findTimer = setTimeout(async () => {
       if (q.length < 2) { st.results = []; } else {
@@ -355,7 +656,7 @@ document.addEventListener("input", e => {
         if (error) toast(errText(error));
       }
       const box = $("#mres-" + scope);
-      if (box) box.innerHTML = st.results.length ? st.results.map((m, i) => `<button type="button" data-pick="${scope}" data-i="${i}"><b>${esc(m.full_name || "Member")}</b> · ${esc(m.member_code)}<div class="fine">${esc(m.phone || "")} · ${money(m.balance)}</div></button>`).join("") : (q.length >= 2 ? `<p class="fine">No member found.</p>` : "");
+      if (box) box.innerHTML = st.results.length ? st.results.map((m, i) => `<button type="button" data-pick="${scope}" data-i="${i}"><b>${esc(m.business_name || m.full_name || "Member")}</b> · ${esc(m.member_code)}<div class="fine">${esc(m.phone || "")} · ${money(m.balance)}</div></button>`).join("") : (q.length >= 2 ? `<p class="fine">No member found.</p>` : "");
     }, 250);
     return;
   }
@@ -377,13 +678,13 @@ document.addEventListener("keydown", e => {
   const f = e.target.closest && e.target.closest("[data-find]");
   if (f && e.key === "Enter") {
     e.preventDefault();
-    const scope = f.dataset.find, st = scope === "sale" ? sale : top, q = f.value.trim();
+    const scope = f.dataset.find, st = scopeState(scope), q = f.value.trim();
     clearTimeout(findTimer);
     sb.rpc("find_member", { q }).then(({ data, error }) => {
       if (error) { toast(errText(error)); return; }
       const exact = (data || []).find(m => m.member_code === q) || (data && data.length === 1 ? data[0] : null);
       if (exact) { st.member = exact; st.results = []; rerenderPanel(); }
-      else { st.results = data || []; const box = $("#mres-" + scope); if (box) box.innerHTML = st.results.map((m, i) => `<button type="button" data-pick="${scope}" data-i="${i}"><b>${esc(m.full_name || "Member")}</b> · ${esc(m.member_code)}<div class="fine">${esc(m.phone || "")} · ${money(m.balance)}</div></button>`).join("") || `<p class="fine">No member found.</p>`; }
+      else { st.results = data || []; const box = $("#mres-" + scope); if (box) box.innerHTML = st.results.map((m, i) => `<button type="button" data-pick="${scope}" data-i="${i}"><b>${esc(m.business_name || m.full_name || "Member")}</b> · ${esc(m.member_code)}<div class="fine">${esc(m.phone || "")} · ${money(m.balance)}</div></button>`).join("") || `<p class="fine">No member found.</p>`; }
     });
   }
 });
@@ -402,8 +703,8 @@ document.addEventListener("click", async e => {
     rerenderPanel(); return;
   }
   const d = t.closest("[data-del]"); if (d) { sale.lines.splice(+d.dataset.del, 1); rerenderPanel(); return; }
-  const pk = t.closest("[data-pick]"); if (pk) { const st = pk.dataset.pick === "sale" ? sale : top; st.member = st.results[+pk.dataset.i]; st.results = []; rerenderPanel(); return; }
-  const cl = t.closest("[data-clear]"); if (cl) { const st = cl.dataset.clear === "sale" ? sale : top; st.member = null; if (st === sale && sale.pay === "wallet") sale.pay = "cash"; rerenderPanel(); return; }
+  const pk = t.closest("[data-pick]"); if (pk) { const st = scopeState(pk.dataset.pick); st.member = st.results[+pk.dataset.i]; st.results = []; rerenderPanel(); return; }
+  const cl = t.closest("[data-clear]"); if (cl) { const st = scopeState(cl.dataset.clear); st.member = null; if (st === sale && sale.pay === "wallet") sale.pay = "cash"; rerenderPanel(); return; }
   const py = t.closest("[data-pay]"); if (py) { sale.pay = py.dataset.pay; rerenderPanel(); return; }
   if (t.closest("#complete")) { completeSale(t.closest("#complete")); return; }
   if (t.closest("#newSale")) { Object.assign(sale, { lines: [], member: null, pay: "cash", ref: "", tendered: "", result: null, results: [] }); rerenderPanel(); return; }
@@ -443,6 +744,7 @@ document.addEventListener("submit", async e => {
       const patch = {
         wallet_discount_pct: Number(v.wallet_discount_pct) || 0, delivery_fee: Number(v.delivery_fee) || 0, min_order: Number(v.min_order) || 0,
         areas: v.areas.split(",").map(s => s.trim()).filter(Boolean), momo_instructions: v.momo_instructions.trim(), topup_bonus: tiers, updated_at: new Date().toISOString(),
+        invoice_pay_from_balance: !!v.invoice_pay_from_balance, momo_auto_match: !!v.momo_auto_match,
       };
       const { data, error } = await sb.from("settings").update(patch).eq("id", 1).select().single();
       if (error) throw error;

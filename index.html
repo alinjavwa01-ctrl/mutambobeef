@@ -60,6 +60,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="assets/mb.js"></script>
+<script src="assets/invoice.js"></script>
 <script>
 (() => {
 const { sb, esc, money, when, errText, bonusFor, toast, label } = MB;
@@ -99,6 +100,8 @@ const disc = p => p.img
   ? `<span class="disc"><img src="${esc(p.img)}" alt="${esc(p.name)}" loading="lazy" width="690" height="430"></span>`
   : `<span class="disc solid"><span class="word">${esc(p.name.replace(/ beef| steak/i, ""))}</span></span>`;
 let nextRoute = null;
+let signinMode = "phone", otpPhone = "";
+const e164 = p => { let d = String(p || "").replace(/\D/g, ""); if (/^0\d{9}$/.test(d)) d = "260" + d.slice(1); else if (/^\d{9}$/.test(d)) d = "260" + d; return "+" + d; };
 
 /* ---------- data ---------- */
 async function loadCatalogue() {
@@ -256,9 +259,28 @@ const views = {
 
   signin() {
     if (session) return views.account();
+    if (signinMode === "phone") return `<section class="page"><div class="wrap auth">
+      <h1>Sign in</h1>
+      <p class="lead">Your balance, orders, invoices and account number.</p>
+      ${otpPhone ? `<form class="form" id="otpVerifyForm">
+        <p>We sent a code to <b>${esc(otpPhone)}</b>.</p>
+        <label>Code<input name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="8" required></label>
+        <p class="err" id="err" role="alert"></p>
+        <button class="pill pill-red pill-lg" type="submit">Sign in</button>
+      </form>
+      <p class="alt"><button type="button" class="pill pill-line" id="otpBack">Use another number</button></p>`
+      : `<form class="form" id="otpSendForm">
+        <label>Phone number on your account<input name="phone" type="tel" autocomplete="tel" placeholder="e.g. 097 123 4567" required></label>
+        <p class="err" id="err" role="alert"></p>
+        <button class="pill pill-red pill-lg" type="submit">Send me a code</button>
+      </form>`}
+      <p class="alt"><button type="button" class="pill pill-line" data-signin="email">Sign in with email instead</button></p>
+      <p class="alt">You don't need to sign in to view an invoice. The link we send opens it.</p>
+    </div></section>`;
     return `<section class="page"><div class="wrap auth">
       <h1>Sign in</h1>
       <p class="lead">Your balance, orders and account number.</p>
+      <p class="alt" style="margin:0 0 14px"><button type="button" class="pill pill-line" data-signin="phone">Sign in with phone and code</button></p>
       <form class="form" id="signinForm">
         <label>Email<input name="email" type="email" autocomplete="email" required></label>
         <label>Password<input name="password" type="password" autocomplete="current-password" required></label>
@@ -282,7 +304,7 @@ const views = {
   },
 
   account(tab) {
-    if (!session) { nextRoute = "account"; return views.signin(); }
+    if (!session) { nextRoute = tab ? "account-" + tab : "account"; return views.signin(); }
     tab = tab || "activity";
     const m = me || {};
     return `<section class="page"><div class="wrap acct">
@@ -308,6 +330,7 @@ const views = {
         <div class="tabs" role="tablist">
           <a href="#account" aria-current="${tab === "activity"}">Balance</a>
           <a href="#account-orders" aria-current="${tab === "orders"}">Orders</a>
+          <a href="#account-invoices" aria-current="${tab === "invoices"}">Invoices</a>
           <a href="#account-profile" aria-current="${tab === "profile"}">Profile</a>
         </div>
         <div id="acctBody"><p class="spin">Loading…</p></div>
@@ -402,6 +425,19 @@ async function fillAccount(tab) {
     try { new QRCode($("#qr"), { text: me.member_code, width: 96, height: 96, colorDark: "#1b1613", colorLight: "#ffffff" }); } catch (e) {}
   }
   const uid = session.user.id;
+  if (tab === "invoices") {
+    const { data, error } = await sb.rpc("my_invoices");
+    if (error) { body.innerHTML = `<p class="err">${esc(errText(error))}</p>`; return; }
+    const list = data.invoices || [];
+    body.innerHTML = list.length ? `<div class="box" style="margin:10px 0 6px"><div class="bal"><b>${money(data.owed)}</b><span>owed on ${list.filter(i => i.status === "sent" || i.status === "opened").length} unpaid invoice${list.filter(i => i.status === "sent" || i.status === "opened").length === 1 ? "" : "s"}</span></div>
+        ${Number(data.owed) > 0 ? `<p class="fine">Pay by MTN MoMo to +260 57 098 9456 with the invoice number as the reference.</p>` : ""}</div>
+      <div class="rows">${list.map(i => `<a class="row" href="/i/${encodeURIComponent(i.token)}" style="text-decoration:none">
+        <div><div><b>${esc(i.number)}</b> <span class="tag${i.status === "sent" || i.status === "opened" ? " red" : ""}">${i.status === "sent" || i.status === "opened" ? "Unpaid" : esc(label(i.status))}</span></div>
+        <div class="s">${esc(MBInvoice.day(i.invoice_date))} · ${MBInvoice.kg(i.total_kg)} kg${i.status === "paid" ? ` · paid ${esc(MBInvoice.day(i.paid_at))}` : ""}</div></div>
+        <span class="amt">${money(i.total_k)}</span></a>`).join("")}</div>`
+      : `<div class="empty"><p>No invoices on this account.</p></div>`;
+    return;
+  }
   if (tab === "orders") {
     const { data, error } = await sb.from("orders").select("*, order_items(*)").eq("user_id", uid).order("created_at", { ascending: false }).limit(30);
     if (error) { body.innerHTML = `<p class="err">${esc(errText(error))}</p>`; return; }
@@ -424,7 +460,7 @@ async function fillAccount(tab) {
   } else {
     const { data, error } = await sb.from("wallet_transactions").select("*").eq("user_id", uid).order("created_at", { ascending: false }).limit(50);
     if (error) { body.innerHTML = `<p class="err">${esc(errText(error))}</p>`; return; }
-    body.innerHTML = data.length ? `<div class="rows">${data.map(t => `<div class="row"><div><div>${esc(label(t.type))}${t.order_id ? ` · order #${t.order_id}` : ""}</div><div class="s">${when(t.created_at)}${t.type === "topup" ? " · " + esc(label(t.method)) : ""}</div></div><span class="amt${t.amount > 0 ? " pos" : ""}">${t.amount > 0 ? "+" : "−"}${money(Math.abs(t.amount))}</span></div>`).join("")}</div>`
+    body.innerHTML = data.length ? `<div class="rows">${data.map(t => `<div class="row"><div><div>${esc(label(t.type))}${t.order_id ? ` · order #${t.order_id}` : ""}${t.invoice_id ? ` · invoice ${esc(t.reference)}` : ""}</div><div class="s">${when(t.created_at)}${t.type === "topup" ? " · " + esc(label(t.method)) : ""}</div></div><span class="amt${t.amount > 0 ? " pos" : ""}">${t.amount > 0 ? "+" : "−"}${money(Math.abs(t.amount))}</span></div>`).join("")}</div>`
       : `<div class="empty"><p>Nothing yet. Load your account to start paying ${pct()}% less.</p></div>`;
   }
 }
@@ -477,6 +513,8 @@ document.addEventListener("click", async e => {
   const sg = e.target.closest(".checkout .seg button");
   if (sg) { co[sg.parentElement.dataset.k] = sg.dataset.v; refreshCheckout(); return; }
   const pl = e.target.closest("#place"); if (pl) { placeOrder(pl); return; }
+  const sm = e.target.closest("[data-signin]"); if (sm) { signinMode = sm.dataset.signin; otpPhone = ""; render(true); return; }
+  if (e.target.closest("#otpBack")) { otpPhone = ""; render(true); return; }
   if (e.target.closest("#signout")) { await sb.auth.signOut(); location.hash = "home"; return; }
   if (e.target.closest("#forgot")) {
     const email = document.querySelector("#signinForm [name=email]").value.trim();
@@ -511,6 +549,16 @@ document.addEventListener("submit", async e => {
         if (!r.error) return;
       }
       if (!data.session) { $("#app").innerHTML = `<section class="page"><div class="wrap auth"><h1>Check your email</h1><p class="lead">We sent a link to ${esc(v.email)}. Open it to confirm your account, then sign in.</p><a class="pill pill-red pill-lg" href="#signin">Sign in</a></div></section>`; return; }
+    } else if (f.id === "otpSendForm") {
+      const phone = e164(v.phone);
+      if (phone.length < 12) throw new Error("Enter your phone number with the area code");
+      const { error } = await sb.auth.signInWithOtp({ phone, options: { shouldCreateUser: false } });
+      if (error) throw /signups? not allowed|not found/i.test(error.message) ? new Error("We don't have an account with that number. Ask Mutambo Beef to check the number on your account.") : error;
+      otpPhone = phone; render(true); return;
+    } else if (f.id === "otpVerifyForm") {
+      const { error } = await sb.auth.verifyOtp({ phone: otpPhone, token: v.code.trim(), type: "sms" });
+      if (error) throw error;
+      otpPhone = "";
     } else if (f.id === "signinForm") {
       const { error } = await sb.auth.signInWithPassword({ email: v.email.trim(), password: v.password });
       if (error) throw error;
@@ -535,7 +583,11 @@ sb.auth.onAuthStateChange((event, s) => {
     const was = !!session; session = s;
     await loadMe();
     if (event === "PASSWORD_RECOVERY") { location.hash = "reset"; return; }
-    if (!was && session && ["signin", "join"].includes(route().name)) { location.hash = nextRoute || "account"; nextRoute = null; return; }
+    if (!was && session && ["signin", "join"].includes(route().name)) {
+      let back = null; try { back = sessionStorage.getItem("mb_next"); sessionStorage.removeItem("mb_next"); } catch (x) {}
+      if (back && /^\/i\//.test(back)) { location.href = back; return; }
+      location.hash = nextRoute || "account"; nextRoute = null; return;
+    }
     if (was && !session && route().name === "account") { location.hash = "home"; return; }
     render(true);
   }, 0);
