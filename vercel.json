@@ -3,7 +3,7 @@
   "cleanUrls": true,
   "trailingSlash": false,
   "rewrites": [
-    { "source": "/i/:token", "destination": "/invoice.html" }
+    { "source": "/i/:token", "destination": "/invoice" }
   ],
   "functions": {
     "api/invoice-pdf.js": { "memory": 1769, "maxDuration": 30 }
